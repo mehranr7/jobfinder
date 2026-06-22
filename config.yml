@@ -1,3 +1,6 @@
+delay_min_ms: 1000
+delay_max_ms: 1500
+
 target_urls:
   - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=0"
   - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=10"

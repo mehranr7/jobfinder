@@ -14,6 +14,8 @@ with open("config.yml", "r", encoding="utf-8") as f:
 
 TARGET_URLS = config.get("target_urls", [])
 KEYWORDS = config.get("keywords", [])
+DELAY_MIN_MS = config.get("delay_min_ms", 1500)
+DELAY_MAX_MS = config.get("delay_max_ms", 3500)
 
 def truncate(s, length=60):
     return s if len(s) <= length else s[:length-3] + "..."
@@ -306,10 +308,10 @@ def main():
                 matched_jobs.append(job)
                 
                 # Slight delay between deep scrapes to avoid getting blocked
-                page.wait_for_timeout(random.randint(1500, 3500))
+                page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
                 
             # Slight delay between domain pages
-            page.wait_for_timeout(random.randint(2000, 4000))
+            page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
                 
         browser.close()
         
