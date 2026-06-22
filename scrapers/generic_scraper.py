@@ -16,30 +16,71 @@ class GenericScraper(BaseScraper):
     def is_career_portal(self, page):
         """
         Detects if the current page is a career portal based on UI filter keywords AND job titles.
-        Needs at least 4 matching indicator keywords to be strict.
+        Uses JavaScript evaluation to pierce Shadow DOMs so it can see hidden text.
+        Needs at least 6 matching indicator keywords to be strict.
         """
-        html = page.content()
-        soup = BeautifulSoup(html, 'html.parser')
-        text = soup.get_text(separator=' ', strip=True).lower()
+        js_code = '''
+        () => {
+            function extractText(node) {
+                let text = '';
+                if (node.nodeType === Node.TEXT_NODE) {
+                    return node.textContent + ' ';
+                }
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    if (node.shadowRoot) {
+                        text += extractText(node.shadowRoot);
+                    }
+                    for (let child of node.childNodes) {
+                        text += extractText(child);
+                    }
+                }
+                return text;
+            }
+            return extractText(document.body);
+        }
+        '''
+        text = page.evaluate(js_code).lower()
         
         matches = 0
         all_indicators = self.portal_indicator_keywords + self.keywords
         for ind in all_indicators:
             if re.search(r'\b' + re.escape(ind.lower()) + r'\b', text):
                 matches += 1
-                if matches >= 4:
+                if matches >= 6:
                     return True
         return False
 
-    def get_links_matching_keywords(self, soup, url, keyword_list):
+    def get_links_matching_keywords(self, page, url, keyword_list):
         """
         Extracts and resolves hrefs from a_tags that match any keyword in the given list.
+        Uses JavaScript evaluation to pierce Shadow DOMs to find hidden links.
         """
+        js_code = '''
+        () => {
+            function extractLinks(node) {
+                let links = [];
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    if (node.tagName === 'A' && node.href) {
+                        links.push({text: node.innerText || node.textContent || '', href: node.href});
+                    }
+                    if (node.shadowRoot) {
+                        links = links.concat(extractLinks(node.shadowRoot));
+                    }
+                    for (let child of node.childNodes) {
+                        links = links.concat(extractLinks(child));
+                    }
+                }
+                return links;
+            }
+            return extractLinks(document.body);
+        }
+        '''
+        extracted_links = page.evaluate(js_code)
+        
         links = []
-        a_tags = soup.find_all("a", href=True)
-        for a_tag in a_tags:
-            href = a_tag["href"]
-            link_text = a_tag.get_text(separator=' ', strip=True)
+        for l in extracted_links:
+            href = l['href']
+            link_text = l['text'].strip()
             
             for kw in keyword_list:
                 if re.search(r'\b' + re.escape(kw) + r'\b', link_text, re.IGNORECASE) or \
@@ -80,12 +121,9 @@ class GenericScraper(BaseScraper):
             # Wait for any dynamic content
             page.wait_for_timeout(5000)
             
-            html = page.content()
-            soup = BeautifulSoup(html, 'html.parser')
-            
             # Extract job links using BOTH job_link_keywords AND the user's main keywords
             combined_keywords = self.keywords + self.job_link_keywords
-            found_links = self.get_links_matching_keywords(soup, base_url, combined_keywords)
+            found_links = self.get_links_matching_keywords(page, base_url, combined_keywords)
             for link_text, job_url in found_links:
                 if job_url not in all_job_links:
                     all_job_links[job_url] = link_text
@@ -141,9 +179,7 @@ class GenericScraper(BaseScraper):
                 
             # Always enqueue navigation links if under max depth
             if depth < self.max_depth:
-                html = page.content()
-                soup = BeautifulSoup(html, 'html.parser')
-                nav_links = self.get_links_matching_keywords(soup, current_url, self.navigation_keywords)
+                nav_links = self.get_links_matching_keywords(page, current_url, self.navigation_keywords)
                 
                 # Extract core brand name (e.g. 'adesso') to avoid crawling facebook/linkedin
                 from urllib.parse import urlparse
@@ -154,7 +190,8 @@ class GenericScraper(BaseScraper):
                     # Prevent revisiting or crawling massive external sites
                     if nav_url not in visited and nav_url.startswith("http"):
                         # Ensure we stay on the company's domains (e.g. jobs.adesso-group.com or adesso.de)
-                        if brand_name in nav_url.lower():
+                        parsed_nav = urlparse(nav_url)
+                        if brand_name in parsed_nav.netloc.lower():
                             visited.add(nav_url)
                             queue.append((nav_url, depth + 1))
                             
