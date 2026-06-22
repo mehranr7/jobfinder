@@ -183,6 +183,8 @@
             </div>
         </div>
 
+        <h3 id="jobCountDisplay" style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-top: 5px;">Total Offers: 0</h3>
+
         {{jobs_html}}
         
     </div>
@@ -226,6 +228,8 @@
                     }
                 }
             });
+            
+            filterJobs(); // Initial filter to update count
         });
 
         function toggleDone(btn) {
@@ -255,6 +259,8 @@
             const selectedKeyword = document.getElementById('keywordFilter').value;
             const selectedStatus = document.getElementById('statusFilter').value;
             
+            let visibleCount = 0;
+            
             window.jobCards.forEach(card => {
                 const title = card.getAttribute('data-title') || '';
                 const keyword = card.getAttribute('data-keyword') || '';
@@ -269,10 +275,13 @@
                 
                 if (matchesSearch && matchesKeyword && matchesStatus) {
                     card.style.display = "";
+                    visibleCount++;
                 } else {
                     card.style.display = "none";
                 }
             });
+            
+            document.getElementById('jobCountDisplay').innerText = `Total Offers: ${visibleCount}`;
         }
 
         function sortJobs() {

@@ -156,14 +156,33 @@ def scrape_stepstone(page, url):
     articles = soup.find_all("article")
     
     for article in articles:
-        a_tag = article.find("a", href=True)
-        if not a_tag:
+        job_a_tag = None
+        # First, try to find the specific job link format
+        for a in article.find_all("a", href=True):
+            if "stellenangebote--" in a["href"]:
+                job_a_tag = a
+                break
+                
+        # Fallback: check if h2 contains or is wrapped in an a_tag
+        if not job_a_tag:
+            h2 = article.find("h2")
+            if h2:
+                if h2.find("a", href=True):
+                    job_a_tag = h2.find("a", href=True)
+                elif h2.parent.name == "a":
+                    job_a_tag = h2.parent
+                    
+        # Last resort: take the first link
+        if not job_a_tag:
+            job_a_tag = article.find("a", href=True)
+            
+        if not job_a_tag:
             continue
             
         h2 = article.find("h2")
-        title = h2.get_text(strip=True) if h2 else a_tag.get_text(strip=True)
+        title = h2.get_text(strip=True) if h2 else job_a_tag.get_text(strip=True)
         
-        job_link = urljoin(url, a_tag["href"])
+        job_link = urljoin(url, job_a_tag["href"])
         
         time_tag = article.find("time")
         date = time_tag.get_text(strip=True) if time_tag else "Unknown"
