@@ -207,7 +207,7 @@ def scrape_stepstone(page, url):
             })
     return jobs
 
-def generate_report(jobs):
+def generate_report(jobs, quiet=False):
     """
     Generates a static HTML report (results.html) from the scraped jobs list.
     It reads 'report_template.html' and injects the job cards dynamically.
@@ -243,8 +243,10 @@ def generate_report(jobs):
     
     with open("results.html", "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"\n--- SUCCESS ---")
-    print(f"Report generated: results.html with {len(jobs)} jobs.")
+        
+    if not quiet:
+        print(f"\n--- SUCCESS ---")
+        print(f"Report generated: results.html with {len(jobs)} jobs.")
 
 def main():
     """
@@ -306,6 +308,9 @@ def main():
                     job['description'] = "Failed to extract content."
                     
                 matched_jobs.append(job)
+                
+                # Live update the report on each item
+                generate_report(matched_jobs, quiet=True)
                 
                 # Slight delay between deep scrapes to avoid getting blocked
                 page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
