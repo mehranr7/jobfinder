@@ -15,18 +15,19 @@ class GenericScraper(BaseScraper):
 
     def is_career_portal(self, page):
         """
-        Detects if the current page is a career portal based on UI filter keywords.
-        Needs at least 2 matching indicator keywords.
+        Detects if the current page is a career portal based on UI filter keywords AND job titles.
+        Needs at least 4 matching indicator keywords to be strict.
         """
         html = page.content()
         soup = BeautifulSoup(html, 'html.parser')
         text = soup.get_text(separator=' ', strip=True).lower()
         
         matches = 0
-        for ind in self.portal_indicator_keywords:
+        all_indicators = self.portal_indicator_keywords + self.keywords
+        for ind in all_indicators:
             if re.search(r'\b' + re.escape(ind.lower()) + r'\b', text):
                 matches += 1
-                if matches >= 2:
+                if matches >= 4:
                     return True
         return False
 
@@ -77,13 +78,14 @@ class GenericScraper(BaseScraper):
             pages_scraped += 1
             
             # Wait for any dynamic content
-            page.wait_for_timeout(3000)
+            page.wait_for_timeout(5000)
             
             html = page.content()
             soup = BeautifulSoup(html, 'html.parser')
             
-            # Extract job links
-            found_links = self.get_links_matching_keywords(soup, base_url, self.job_link_keywords)
+            # Extract job links using BOTH job_link_keywords AND the user's main keywords
+            combined_keywords = self.keywords + self.job_link_keywords
+            found_links = self.get_links_matching_keywords(soup, base_url, combined_keywords)
             for link_text, job_url in found_links:
                 if job_url not in all_job_links:
                     all_job_links[job_url] = link_text
@@ -126,7 +128,7 @@ class GenericScraper(BaseScraper):
             try:
                 page.goto(current_url, timeout=20000)
                 # Wait a bit for dynamic React/Vue apps
-                page.wait_for_timeout(3000)
+                page.wait_for_timeout(6000)
             except Exception as e:
                 print(f"  [!] Failed to load {current_url}: {e}")
                 continue
@@ -134,18 +136,25 @@ class GenericScraper(BaseScraper):
             # Is this the portal?
             if self.is_career_portal(page):
                 print("  -> [+] Career Portal Detected! Extracting jobs...")
-                jobs = self.scrape_career_portal(page, current_url)
-                break
-            else:
-                # Not a portal, enqueue navigation links if under max depth
-                if depth < self.max_depth:
-                    html = page.content()
-                    soup = BeautifulSoup(html, 'html.parser')
-                    nav_links = self.get_links_matching_keywords(soup, current_url, self.navigation_keywords)
-                    
-                    for _, nav_url in nav_links:
-                        # Prevent revisiting or crawling massive external sites
-                        if nav_url not in visited and nav_url.startswith("http"):
+                extracted = self.scrape_career_portal(page, current_url)
+                jobs.extend(extracted)
+                
+            # Always enqueue navigation links if under max depth
+            if depth < self.max_depth:
+                html = page.content()
+                soup = BeautifulSoup(html, 'html.parser')
+                nav_links = self.get_links_matching_keywords(soup, current_url, self.navigation_keywords)
+                
+                # Extract core brand name (e.g. 'adesso') to avoid crawling facebook/linkedin
+                from urllib.parse import urlparse
+                base_netloc = urlparse(start_url).netloc.replace("www.", "")
+                brand_name = base_netloc.split('.')[0] if '.' in base_netloc else base_netloc
+                
+                for _, nav_url in nav_links:
+                    # Prevent revisiting or crawling massive external sites
+                    if nav_url not in visited and nav_url.startswith("http"):
+                        # Ensure we stay on the company's domains (e.g. jobs.adesso-group.com or adesso.de)
+                        if brand_name in nav_url.lower():
                             visited.add(nav_url)
                             queue.append((nav_url, depth + 1))
                             
