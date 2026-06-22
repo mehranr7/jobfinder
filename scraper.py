@@ -18,6 +18,10 @@ def truncate(s, length=60):
     return s if len(s) <= length else s[:length-3] + "..."
 
 def clean_text(html_content):
+    """
+    Cleans raw HTML content by removing scripts, styles, and other non-visible elements.
+    Returns the visible text cleanly formatted with line breaks.
+    """
     soup = BeautifulSoup(html_content, 'html.parser')
     for tag in soup(["script", "style", "header", "footer", "nav", "noscript", "svg", "img"]):
         tag.extract()
@@ -26,6 +30,10 @@ def clean_text(html_content):
     return text
 
 def scrape_stellenwerk(page, url):
+    """
+    Scrapes job offers from a Stellenwerk URL using Playwright.
+    Extracts the title, date, and link, and filters by defined keywords.
+    """
     jobs = []
     page.goto(url)
     
@@ -71,6 +79,10 @@ def scrape_stellenwerk(page, url):
     return jobs
 
 def scrape_indeed(page, url):
+    """
+    Scrapes job offers from an Indeed URL using Playwright.
+    Handles the specific DOM structure of Indeed's job cards.
+    """
     jobs = []
     page.goto(url)
     
@@ -125,6 +137,10 @@ def scrape_indeed(page, url):
     return jobs
 
 def scrape_stepstone(page, url):
+    """
+    Scrapes job offers from a Stepstone URL using Playwright.
+    Extracts jobs listed inside 'article' tags.
+    """
     jobs = []
     page.goto(url)
     
@@ -170,6 +186,10 @@ def scrape_stepstone(page, url):
     return jobs
 
 def generate_report(jobs):
+    """
+    Generates a static HTML report (results.html) from the scraped jobs list.
+    It reads 'report_template.html' and injects the job cards dynamically.
+    """
     with open("report_template.html", "r", encoding="utf-8") as f:
         template = f.read()
         
@@ -205,8 +225,15 @@ def generate_report(jobs):
     print(f"Report generated: results.html with {len(jobs)} jobs.")
 
 def main():
+    """
+    Main execution loop.
+    Initializes the Playwright headless browser, loops through configured URLs,
+    extracts the jobs using the appropriate parser, deep-scrapes the descriptions,
+    and finally writes the results.html report.
+    """
     matched_jobs = []
     
+    # Sort URLs alphabetically to group them by domain in the console output
     sorted_urls = sorted(TARGET_URLS)
     
     with sync_playwright() as p:
