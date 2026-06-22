@@ -15,7 +15,11 @@ class ScraperFactory:
             config.keywords, 
             config.delay_min_ms, 
             config.delay_max_ms, 
-            config.job_link_keywords
+            config.job_link_keywords,
+            config.max_depth,
+            config.navigation_keywords,
+            config.portal_indicator_keywords,
+            config.pagination_keywords
         )
 
     def get_scraper(self, url):
