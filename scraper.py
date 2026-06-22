@@ -1,5 +1,6 @@
 import sys
 import re
+import random
 from datetime import datetime
 from urllib.parse import urljoin
 import yaml
@@ -303,6 +304,12 @@ def main():
                     job['description'] = "Failed to extract content."
                     
                 matched_jobs.append(job)
+                
+                # Slight delay between deep scrapes to avoid getting blocked
+                page.wait_for_timeout(random.randint(1500, 3500))
+                
+            # Slight delay between domain pages
+            page.wait_for_timeout(random.randint(2000, 4000))
                 
         browser.close()
         
