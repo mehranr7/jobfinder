@@ -1,6 +1,44 @@
 delay_min_ms: 1000
 delay_max_ms: 1500
 
+job_link_keywords:
+  - "student"
+  - "intern"
+  - "praktik"
+  - "werkstudent"
+  - "working"
+  - "aushilfe"
+
+company_urls:
+  - "https://startupcity.hamburg/jobs-cofounder/startup-jobs"
+  - "https://www.stellenwerk.de/hamburg"
+  - "https://germantechjobs.de"
+  - "https://devjobs.de"
+  - "https://www.hamburg-startups.de/jobs"
+  - "https://corporate.aboutyou.de/de/karriere"
+  - "https://www.jimdo.com/careers"
+  - "https://www.taxdoo.com/careers"
+  - "https://www.freenow.com/careers"
+  - "https://www.applike-group.com/careers"
+  - "https://www.innogames.com/career"
+  - "https://www.goodgamestudios.com/careers"
+  - "https://www.exporo.de/karriere"
+  - "https://www.onelogic.de/careers"
+  - "https://www.capgemini.com/de-de/karriere"
+  - "https://www.adesso.de/de/karriere"
+  - "https://www.innoq.com/de/karriere"
+  - "https://www.bytro.com/careers"
+  - "https://www.facelift-b2b.com/careers"
+  - "https://www.plath.de/karriere"
+  - "https://www.omr.com/de/jobs"
+  - "https://www.justwatch.com/us/talent"
+  - "https://www.n26.com/en-de/careers"
+  - "https://www.personio.com/careers"
+  - "https://www.contentful.com/careers"
+  - "https://www.wunderflats.com/careers"
+  - "https://www.clark.de/karriere"
+  - "https://www.channable.com/careers"
+
 target_urls:
   - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=0"
   - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=10"
