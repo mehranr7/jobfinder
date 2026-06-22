@@ -10,10 +10,13 @@ class GenericScraper(BaseScraper):
 
     def scrape(self, page, url):
         jobs = []
-        page.goto(url)
-        
-        # Wait a bit for dynamic React/Vue apps to load their links
-        page.wait_for_timeout(5000)
+        try:
+            page.goto(url, timeout=20000)
+            # Wait a bit for dynamic React/Vue apps to load their links
+            page.wait_for_timeout(5000)
+        except Exception as e:
+            print(f"  [!] Failed to load {url}: {e}")
+            return jobs
         
         html = page.content()
         soup = BeautifulSoup(html, 'html.parser')

@@ -6,12 +6,11 @@ from scrapers.base_scraper import BaseScraper
 class StepstoneScraper(BaseScraper):
     def scrape(self, page, url):
         jobs = []
-        page.goto(url)
-        
         try:
+            page.goto(url, timeout=20000)
             page.wait_for_selector("article", timeout=15000)
-        except:
-            print("  [!] Timeout / Blocked")
+        except Exception as e:
+            print(f"  [!] Timeout or failed to load: {e}")
             return jobs
 
         html = page.content()

@@ -6,12 +6,11 @@ from scrapers.base_scraper import BaseScraper
 class StellenwerkScraper(BaseScraper):
     def scrape(self, page, url):
         jobs = []
-        page.goto(url)
-        
         try:
+            page.goto(url, timeout=20000)
             page.wait_for_selector("p.text-xl", timeout=10000)
-        except:
-            print("  [!] Timeout waiting for jobs")
+        except Exception as e:
+            print(f"  [!] Timeout or failed to load: {e}")
             return jobs
 
         html = page.content()
