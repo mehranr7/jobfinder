@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Scraper Results</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .job-card {
+            background: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .job-title {
+            margin-top: 0;
+            color: #2980b9;
+        }
+        .job-meta {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+        .job-meta a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .job-meta a:hover {
+            text-decoration: underline;
+        }
+        .job-description {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.95em;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .desc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .copy-btn {
+            background-color: #2980b9;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .copy-btn:hover {
+            background-color: #3498db;
+        }
+        .keyword-badge {
+            background-color: #f39c12;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .done-btn {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+        .done-btn:hover {
+            background-color: #2ecc71;
+        }
+        .job-card.done {
+            opacity: 0.5;
+            filter: grayscale(80%);
+            background: #fdfdfd;
+        }
+        .job-card.done .done-btn {
+            background-color: #95a5a6;
+            cursor: pointer;
+        }
+        .job-card.done .done-btn:hover {
+            background-color: #7f8c8d;
+        }
+        .controls {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .controls input, .controls select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .control-group {
+            display: flex;
+            flex: 1;
+            min-width: 200px;
+            gap: 5px;
+        }
+        .control-group input, .control-group select {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+        }
+        .clear-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .clear-btn:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Scraped Job Offers</h1>
+        <p>Generated at: {{timestamp}}</p>
+        
+        <div class="controls">
+            <div class="control-group">
+                <select id="statusFilter" onchange="filterJobs()">
+                    <option value="">All Statuses</option>
+                    <option value="done">Done</option>
+                    <option value="undone">Undone</option>
+                </select>
+                <button class="clear-btn" onclick="clearStatus()">Clear</button>
+            </div>
+            <div class="control-group">
+                <input type="text" id="searchInput" placeholder="Search by title or keyword..." onkeyup="filterJobs()">
+                <button class="clear-btn" onclick="clearSearch()">Clear</button>
+            </div>
+            <div class="control-group">
+                <select id="keywordFilter" onchange="filterJobs()">
+                    <option value="">All Keywords</option>
+                </select>
+                <button class="clear-btn" onclick="clearKeyword()">Clear</button>
+            </div>
+            <div class="control-group">
+                <select id="sortSelect" onchange="sortJobs()">
+                    <option value="date-asc">Date (Newest First)</option>
+                    <option value="date-desc">Date (Oldest First)</option>
+                    <option value="title-asc">Title (A-Z)</option>
+                    <option value="title-desc">Title (Z-A)</option>
+                    <option value="keyword-asc">Keyword (A-Z)</option>
+                </select>
+                <button class="clear-btn" onclick="clearSort()">Clear</button>
+            </div>
+        </div>
+
+        {{jobs_html}}
+        
+    </div>
+    <script>
+        function copyToClipboard(elementId, btn) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btn.innerText;
+                btn.innerText = "Copied!";
+                setTimeout(() => btn.innerText = originalText, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const jobCards = Array.from(document.querySelectorAll('.job-card'));
+            const keywords = new Set();
+            jobCards.forEach(card => keywords.add(card.getAttribute('data-keyword')));
+            
+            const keywordSelect = document.getElementById('keywordFilter');
+            Array.from(keywords).sort().forEach(kw => {
+                if(!kw) return;
+                const option = document.createElement('option');
+                option.value = kw;
+                option.textContent = kw.charAt(0).toUpperCase() + kw.slice(1);
+                keywordSelect.appendChild(option);
+            });
+            
+            window.jobCards = jobCards; // store globally for filtering/sorting
+            
+            // Apply done status from localStorage
+            let doneJobs = JSON.parse(localStorage.getItem('doneJobs') || '[]');
+            jobCards.forEach(card => {
+                let url = card.getAttribute('data-url');
+                if (doneJobs.includes(url)) {
+                    card.classList.add('done');
+                    const btn = card.querySelector('.done-btn');
+                    if (btn) {
+                        btn.innerText = "Undo Done";
+                    }
+                }
+            });
+        });
+
+        function toggleDone(btn) {
+            const card = btn.closest('.job-card');
+            const url = card.getAttribute('data-url');
+            
+            let doneJobs = JSON.parse(localStorage.getItem('doneJobs') || '[]');
+            
+            if (doneJobs.includes(url)) {
+                // Mark as undone
+                doneJobs = doneJobs.filter(u => u !== url);
+                card.classList.remove('done');
+                btn.innerText = "✓ Mark as Done";
+            } else {
+                // Mark as done
+                doneJobs.push(url);
+                card.classList.add('done');
+                btn.innerText = "Undo Done";
+            }
+            
+            localStorage.setItem('doneJobs', JSON.stringify(doneJobs));
+            filterJobs(); // Re-filter if status filter is active
+        }
+
+        function filterJobs() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const selectedKeyword = document.getElementById('keywordFilter').value;
+            const selectedStatus = document.getElementById('statusFilter').value;
+            
+            window.jobCards.forEach(card => {
+                const title = card.getAttribute('data-title') || '';
+                const keyword = card.getAttribute('data-keyword') || '';
+                const isDone = card.classList.contains('done');
+                
+                const matchesSearch = title.includes(searchText) || keyword.includes(searchText);
+                const matchesKeyword = selectedKeyword === "" || keyword === selectedKeyword;
+                
+                let matchesStatus = true;
+                if (selectedStatus === 'done') matchesStatus = isDone;
+                if (selectedStatus === 'undone') matchesStatus = !isDone;
+                
+                if (matchesSearch && matchesKeyword && matchesStatus) {
+                    card.style.display = "";
+                } else {
+                    card.style.display = "none";
+                }
+            });
+        }
+
+        function sortJobs() {
+            const sortValue = document.getElementById('sortSelect').value;
+            const container = document.querySelector('.jobs-container');
+            
+            window.jobCards.sort((a, b) => {
+                if (sortValue === "date-asc") {
+                    return parseInt(a.getAttribute('data-index')) - parseInt(b.getAttribute('data-index'));
+                } else if (sortValue === "date-desc") {
+                    return parseInt(b.getAttribute('data-index')) - parseInt(a.getAttribute('data-index'));
+                } else if (sortValue === "title-asc") {
+                    return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
+                } else if (sortValue === "title-desc") {
+                    return b.getAttribute('data-title').localeCompare(a.getAttribute('data-title'));
+                } else if (sortValue === "keyword-asc") {
+                    return a.getAttribute('data-keyword').localeCompare(b.getAttribute('data-keyword'));
+                }
+                return 0;
+            });
+            
+            window.jobCards.forEach(card => container.appendChild(card));
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            filterJobs();
+        }
+
+        function clearKeyword() {
+            document.getElementById('keywordFilter').value = '';
+            filterJobs();
+        }
+
+        function clearStatus() {
+            document.getElementById('statusFilter').value = '';
+            filterJobs();
+        }
+
+        function clearSort() {
+            document.getElementById('sortSelect').value = 'date-asc';
+            sortJobs();
+        }
+    </script>
+</body>
+</html>
