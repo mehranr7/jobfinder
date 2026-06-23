@@ -108,6 +108,9 @@ function filterJobs() {
     const keywordInput = document.getElementById('keywordFilter');
     const keywordFilter = keywordInput ? keywordInput.value.toLowerCase() : "";
     
+    const negKeywordInput = document.getElementById('negativeKeywordFilter');
+    const negKeywordFilter = negKeywordInput ? negKeywordInput.value.toLowerCase() : "";
+    
     const statusSelect = document.getElementById('statusFilter');
     const statusFilter = statusSelect ? statusSelect.value : "";
     
@@ -118,14 +121,16 @@ function filterJobs() {
         const kws = card.getAttribute('data-keyword').toLowerCase();
         const isDone = card.classList.contains('done');
         
-        let matchesText = title.includes(textFilter);
+        let matchesText = title.includes(textFilter) || kws.includes(textFilter);
         let matchesKeyword = keywordFilter === "" || kws.includes(keywordFilter);
+        // If a negative keyword filter is selected, we only show jobs that DO NOT have that negative keyword
+        let matchesNegKeyword = negKeywordFilter === "" || !kws.includes(negKeywordFilter);
         
         let matchesStatus = true;
         if (statusFilter === 'done') matchesStatus = isDone;
         if (statusFilter === 'undone') matchesStatus = !isDone;
         
-        if (matchesText && matchesKeyword && matchesStatus) {
+        if (matchesText && matchesKeyword && matchesNegKeyword && matchesStatus) {
             card.style.display = 'block';
             visibleCount++;
         } else {
@@ -136,7 +141,85 @@ function filterJobs() {
     document.getElementById('jobCountDisplay').innerText = `Total Offers: ${visibleCount}`;
 }
 
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    filterJobs();
+}
+
+function clearKeyword() {
+    document.getElementById('keywordFilter').value = '';
+    filterJobs();
+}
+
+function clearNegativeKeyword() {
+    document.getElementById('negativeKeywordFilter').value = '';
+    filterJobs();
+}
+
+function clearStatus() {
+    document.getElementById('statusFilter').value = '';
+    filterJobs();
+}
+
+function sortJobs() {
+    const sortSelect = document.getElementById('sortSelect');
+    if(!sortSelect) return;
+    const sortValue = sortSelect.value;
+    const container = document.querySelector('.jobs-container');
+    
+    let sortedCards = [...window.jobCards];
+    
+    if (sortValue === "date-asc") {
+        sortedCards = [...window.originalJobCards];
+    } else if (sortValue === "date-desc") {
+        sortedCards = [...window.originalJobCards].reverse();
+    } else if (sortValue === "title-asc") {
+        sortedCards.sort((a, b) => a.getAttribute('data-title').localeCompare(b.getAttribute('data-title')));
+    } else if (sortValue === "title-desc") {
+        sortedCards.sort((a, b) => b.getAttribute('data-title').localeCompare(a.getAttribute('data-title')));
+    } else if (sortValue === "keyword-asc") {
+        sortedCards.sort((a, b) => a.getAttribute('data-keyword').localeCompare(b.getAttribute('data-keyword')));
+    }
+    
+    sortedCards.forEach(card => container.appendChild(card));
+}
+
+function clearSort() {
+    document.getElementById('sortSelect').value = 'date-asc';
+    sortJobs();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     window.jobCards = Array.from(document.querySelectorAll('.job-card'));
+    window.originalJobCards = [...window.jobCards];
+    
+    // Populate the keyword dropdowns
+    const keywords = new Set();
+    const negKeywords = new Set();
+    
+    const posBadges = document.querySelectorAll('.keyword-badge:not(.negative-badge)');
+    posBadges.forEach(b => keywords.add(b.innerText.trim().toLowerCase()));
+    
+    const negBadges = document.querySelectorAll('.negative-badge');
+    negBadges.forEach(b => negKeywords.add(b.innerText.trim().toLowerCase()));
+    
+    const keywordSelect = document.getElementById('keywordFilter');
+    Array.from(keywords).sort().forEach(kw => {
+        const option = document.createElement('option');
+        option.value = kw;
+        option.textContent = kw.charAt(0).toUpperCase() + kw.slice(1);
+        keywordSelect.appendChild(option);
+    });
+
+    const negKeywordSelect = document.getElementById('negativeKeywordFilter');
+    if(negKeywordSelect) {
+        Array.from(negKeywords).sort().forEach(kw => {
+            const option = document.createElement('option');
+            option.value = kw;
+            option.textContent = kw.charAt(0).toUpperCase() + kw.slice(1);
+            negKeywordSelect.appendChild(option);
+        });
+    }
+    
     filterJobs(); // Initial count
 });

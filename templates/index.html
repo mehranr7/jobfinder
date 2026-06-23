@@ -45,6 +45,12 @@
                 <button class="clear-btn" onclick="clearKeyword()">Clear</button>
             </div>
             <div class="control-group">
+                <select id="negativeKeywordFilter" onchange="filterJobs()">
+                    <option value="">All Negative Keywords</option>
+                </select>
+                <button class="clear-btn" onclick="clearNegativeKeyword()">Clear</button>
+            </div>
+            <div class="control-group">
                 <select id="sortSelect" onchange="sortJobs()">
                     <option value="date-asc">Date (Newest First)</option>
                     <option value="date-desc">Date (Oldest First)</option>
