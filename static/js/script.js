@@ -218,9 +218,23 @@ function sortJobs() {
     let sortedCards = [...window.jobCards];
     
     if (sortValue === "date-asc") {
-        sortedCards.sort((a, b) => new Date(a.getAttribute('data-date')) - new Date(b.getAttribute('data-date')));
+        sortedCards.sort((a, b) => {
+            const da = new Date(a.getAttribute('data-date')).getTime();
+            const db = new Date(b.getAttribute('data-date')).getTime();
+            if (isNaN(da) && isNaN(db)) return 0;
+            if (isNaN(da)) return 1;
+            if (isNaN(db)) return -1;
+            return da - db;
+        });
     } else if (sortValue === "date-desc") {
-        sortedCards.sort((a, b) => new Date(b.getAttribute('data-date')) - new Date(a.getAttribute('data-date')));
+        sortedCards.sort((a, b) => {
+            const da = new Date(a.getAttribute('data-date')).getTime();
+            const db = new Date(b.getAttribute('data-date')).getTime();
+            if (isNaN(da) && isNaN(db)) return 0;
+            if (isNaN(da)) return 1;
+            if (isNaN(db)) return -1;
+            return db - da;
+        });
     } else if (sortValue === "title-asc") {
         sortedCards.sort((a, b) => a.getAttribute('data-title').localeCompare(b.getAttribute('data-title')));
     } else if (sortValue === "title-desc") {
