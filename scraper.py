@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 import yaml
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
+import database
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -82,6 +83,7 @@ def scrape_stellenwerk(page, url):
                 "title": title,
                 "date": date,
                 "link": job_link,
+                "company": "Stellenwerk",
                 "keyword": ", ".join(matched_keywords),
                 "negative_keyword": ", ".join(matched_negative_keywords)
             })
@@ -157,70 +159,20 @@ def scrape_stepstone(page, url):
                 "title": title,
                 "date": date,
                 "link": job_link,
+                "company": "Stepstone",
                 "keyword": ", ".join(matched_keywords),
                 "negative_keyword": ", ".join(matched_negative_keywords)
             })
     return jobs
-
-def generate_report(jobs, quiet=False):
-    """
-    Generates a static HTML report (results.html) from the scraped jobs list.
-    It reads 'report_template.html' and injects the job cards dynamically.
-    """
-    with open("report_template.html", "r", encoding="utf-8") as f:
-        template = f.read()
-        
-    jobs_html = '<div class="jobs-container">\n'
-    for i, job in enumerate(jobs):
-        escaped_desc = job['description'].replace('<', '&lt;').replace('>', '&gt;')
-        
-        pos_badges = "".join([f'<span class="keyword-badge">{k.strip()}</span>' for k in job['keyword'].split(',') if k.strip()])
-        neg_badges = "".join([f'<span class="keyword-badge negative-badge">{k.strip()}</span>' for k in job['negative_keyword'].split(',') if k.strip()])
-        all_badges = pos_badges + neg_badges
-        
-        # We store the comma separated keywords in data-keyword to be parsed by Javascript
-        data_keywords = job['keyword'].lower()
-        if job['negative_keyword']:
-             data_keywords += ", " + job['negative_keyword'].lower()
-             
-        jobs_html += f"""
-        <div class="job-card" data-title="{job['title'].lower()}" data-keyword="{data_keywords}" data-url="{job['link']}" data-index="{i}">
-            <h2 class="job-title">{job['title']}</h2>
-            <div class="job-meta">
-                <span><strong>Date:</strong> {job['date']}</span> | 
-                <span><strong>Keywords:</strong> {all_badges}</span> | 
-                <span><strong>Link:</strong> <a href="{job['link']}" target="_blank">{job['link']}</a></span>
-            </div>
-            <div class="desc-header">
-                <strong>Description:</strong>
-                <div>
-                    <button class="done-btn" onclick="toggleDone(this)">✓ Mark as Done</button>
-                    <button class="copy-btn" onclick="copyToClipboard('desc-{i}', this)">Copy</button>
-                </div>
-            </div>
-            <div class="job-description" id="desc-{i}">{escaped_desc}</div>
-        </div>
-        """
-    jobs_html += '</div>'
-        
-    html = template.replace("{{timestamp}}", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    html = html.replace("{{jobs_html}}", jobs_html)
-    
-    with open("results.html", "w", encoding="utf-8") as f:
-        f.write(html)
-        
-    if not quiet:
-        print(f"\n--- SUCCESS ---")
-        print(f"Report generated: results.html with {len(jobs)} jobs.")
 
 def main():
     """
     Main execution loop.
     Initializes the Playwright headless browser, loops through configured URLs,
     extracts the jobs using the appropriate parser, deep-scrapes the descriptions,
-    and finally writes the results.html report.
+    and inserts them into the SQLite database.
     """
-    matched_jobs = []
+    database.init_db()
     
     # Sort URLs alphabetically to group them by domain in the console output
     sorted_urls = sorted(TARGET_URLS)
@@ -257,7 +209,12 @@ def main():
                 continue
                 
             total_jobs = len(jobs)
+            new_jobs = 0
             for i, job in enumerate(jobs):
+                if database.job_exists(job['link']):
+                    continue
+                
+                new_jobs += 1
                 title_disp = truncate(job['title'], 50)
                 
                 
@@ -266,7 +223,7 @@ def main():
                 kw_disp = truncate(job['keyword'], 20)
                 if job['negative_keyword']:
                     kw_disp += f" (Neg: {truncate(job['negative_keyword'], 10)})"
-                print(f"  -> Match: {job['date']:>12} | {kw_disp:<35} | {title_disp}")
+                print(f"  -> NEW Match: {job['date']:>12} | {kw_disp:<35} | {title_disp}")
                 
                 # Draw progress bar
                 progress = int(50 * (i + 1) / total_jobs) if total_jobs > 0 else 0
@@ -283,24 +240,23 @@ def main():
                 except Exception as e:
                     job['description'] = "Failed to extract content."
                     
-                matched_jobs.append(job)
-                
-                # Live update the report on each item
-                generate_report(matched_jobs, quiet=True)
+                # Insert into DB
+                database.insert_job(job)
                 
                 # Slight delay between deep scrapes to avoid getting blocked
                 page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
                 
             if total_jobs > 0:
                 sys.stdout.write("\r" + " " * 100 + "\r")
-                print(f"  -> Completed deep scraping {total_jobs} jobs.")
+                print(f"  -> Found {total_jobs} total jobs. Deep scraped {new_jobs} new jobs.")
                 
             # Slight delay between domain pages
             page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
                 
         browser.close()
         
-    generate_report(matched_jobs)
+    print("\n--- SCRAPING FINISHED ---")
+    print("Run the Flask application (app.py) to view the jobs in your browser!")
 
 if __name__ == "__main__":
     main()

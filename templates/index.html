@@ -190,7 +190,40 @@
 
         <h3 id="jobCountDisplay" style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-top: 5px;">Total Offers: 0</h3>
 
-        {{jobs_html}}
+        <div class="jobs-container">
+        {% for job in jobs %}
+        {% set pos_kws = job.keywords.split(',') if job.keywords else [] %}
+        {% set neg_kws = job.negative_keywords.split(',') if job.negative_keywords else [] %}
+        {% set data_kws = (job.keywords ~ ", " ~ job.negative_keywords)|lower %}
+        
+        <div class="job-card {% if job.is_done %}done{% endif %}" data-title="{{ job.title|lower }}" data-keyword="{{ data_kws }}" data-url="{{ job.link }}">
+            <h2 class="job-title">{{ job.title }}</h2>
+            <div class="job-meta">
+                <span><strong>Company:</strong> {{ job.company }}</span> | 
+                <span><strong>Date:</strong> {{ job.date_of_release }}</span> | 
+                <span><strong>Keywords:</strong> 
+                    {% for kw in pos_kws %}
+                        {% if kw.strip() %}<span class="keyword-badge">{{ kw.strip() }}</span>{% endif %}
+                    {% endfor %}
+                    {% for kw in neg_kws %}
+                        {% if kw.strip() %}<span class="keyword-badge negative-badge">{{ kw.strip() }}</span>{% endif %}
+                    {% endfor %}
+                </span> | 
+                <span><strong>Link:</strong> <a href="{{ job.link }}" target="_blank">{{ job.link }}</a></span>
+            </div>
+            <div class="desc-header">
+                <strong>Description:</strong>
+                <div>
+                    <button class="done-btn" onclick="toggleDone(this, '{{ job.link }}')">
+                        {% if job.is_done %}Undo Done{% else %}✓ Mark as Done{% endif %}
+                    </button>
+                    <button class="copy-btn" onclick="copyToClipboard('desc-{{ loop.index }}', this)">Copy</button>
+                </div>
+            </div>
+            <div class="job-description" id="desc-{{ loop.index }}">{{ job.description | safe }}</div>
+        </div>
+        {% endfor %}
+    </div>
         
     </div>
     <script>
@@ -226,44 +259,8 @@
             });
             
             window.jobCards = jobCards; // store globally for filtering/sorting
-            
-            // Apply done status from localStorage
-            let doneJobs = JSON.parse(localStorage.getItem('doneJobs') || '[]');
-            jobCards.forEach(card => {
-                let url = card.getAttribute('data-url');
-                if (doneJobs.includes(url)) {
-                    card.classList.add('done');
-                    const btn = card.querySelector('.done-btn');
-                    if (btn) {
-                        btn.innerText = "Undo Done";
-                    }
-                }
-            });
-            
             filterJobs(); // Initial filter to update count
         });
-
-        function toggleDone(btn) {
-            const card = btn.closest('.job-card');
-            const url = card.getAttribute('data-url');
-            
-            let doneJobs = JSON.parse(localStorage.getItem('doneJobs') || '[]');
-            
-            if (doneJobs.includes(url)) {
-                // Mark as undone
-                doneJobs = doneJobs.filter(u => u !== url);
-                card.classList.remove('done');
-                btn.innerText = "✓ Mark as Done";
-            } else {
-                // Mark as done
-                doneJobs.push(url);
-                card.classList.add('done');
-                btn.innerText = "Undo Done";
-            }
-            
-            localStorage.setItem('doneJobs', JSON.stringify(doneJobs));
-            filterJobs(); // Re-filter if status filter is active
-        }
 
         function filterJobs() {
             const searchText = document.getElementById('searchInput').value.toLowerCase();
