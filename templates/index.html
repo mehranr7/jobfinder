@@ -46,15 +46,25 @@
                 <button class="clear-btn" onclick="clearSearch()">Clear</button>
             </div>
             <div class="control-group">
-                <select id="keywordFilter" onchange="filterJobs()">
-                    <option value="">All Keywords</option>
-                </select>
+                <div class="multi-select" id="keywordSelectContainer" style="position: relative; width: 220px;">
+                    <div class="select-box" onclick="toggleDropdown('keywordDropdown')" style="background: #2c3e50; color: white; padding: 10px; border-radius: 5px; cursor: pointer; border: 1px solid #34495e; display: flex; justify-content: space-between;">
+                        <span id="keywordSelectTitle">All Keywords</span> <span>▼</span>
+                    </div>
+                    <div class="dropdown-content" id="keywordDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #1e272e; border: 1px solid #34495e; border-radius: 5px; max-height: 200px; overflow-y: auto; z-index: 100; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                        <!-- Checkboxes injected by JS -->
+                    </div>
+                </div>
                 <button class="clear-btn" onclick="clearKeyword()">Clear</button>
             </div>
             <div class="control-group">
-                <select id="negativeKeywordFilter" onchange="filterJobs()">
-                    <option value="">All Negative Keywords</option>
-                </select>
+                <div class="multi-select" id="negKeywordSelectContainer" style="position: relative; width: 220px;">
+                    <div class="select-box" onclick="toggleDropdown('negKeywordDropdown')" style="background: #2c3e50; color: white; padding: 10px; border-radius: 5px; cursor: pointer; border: 1px solid #34495e; display: flex; justify-content: space-between;">
+                        <span id="negKeywordSelectTitle">All Negative Keywords</span> <span>▼</span>
+                    </div>
+                    <div class="dropdown-content" id="negKeywordDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #1e272e; border: 1px solid #34495e; border-radius: 5px; max-height: 200px; overflow-y: auto; z-index: 100; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                        <!-- Checkboxes injected by JS -->
+                    </div>
+                </div>
                 <button class="clear-btn" onclick="clearNegativeKeyword()">Clear</button>
             </div>
             <div class="control-group">

@@ -105,11 +105,14 @@ function filterJobs() {
     const searchInput = document.getElementById('searchInput');
     const textFilter = searchInput ? searchInput.value.toLowerCase() : "";
     
-    const keywordInput = document.getElementById('keywordFilter');
-    const keywordFilter = keywordInput ? keywordInput.value.toLowerCase() : "";
+    const selectedKws = Array.from(document.querySelectorAll('.kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
+    const selectedNegKws = Array.from(document.querySelectorAll('.neg-kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
     
-    const negKeywordInput = document.getElementById('negativeKeywordFilter');
-    const negKeywordFilter = negKeywordInput ? negKeywordInput.value.toLowerCase() : "";
+    const kwTitle = document.getElementById('keywordSelectTitle');
+    if (kwTitle) kwTitle.innerText = selectedKws.length > 0 ? `${selectedKws.length} Selected` : 'All Keywords';
+    
+    const negKwTitle = document.getElementById('negKeywordSelectTitle');
+    if (negKwTitle) negKwTitle.innerText = selectedNegKws.length > 0 ? `${selectedNegKws.length} Selected` : 'All Negative Keywords';
     
     const statusSelect = document.getElementById('statusFilter');
     const statusFilter = statusSelect ? statusSelect.value : "";
@@ -122,9 +125,9 @@ function filterJobs() {
         const isDone = card.classList.contains('done');
         
         let matchesText = title.includes(textFilter) || kws.includes(textFilter);
-        let matchesKeyword = keywordFilter === "" || kws.includes(keywordFilter);
-        // If a negative keyword filter is selected, we only show jobs that DO NOT have that negative keyword
-        let matchesNegKeyword = negKeywordFilter === "" || !kws.includes(negKeywordFilter);
+        let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => kws.includes(kw));
+        // If negative keywords are selected, show jobs that DO NOT have ANY of the selected negative keywords
+        let matchesNegKeyword = selectedNegKws.length === 0 || !selectedNegKws.some(kw => kws.includes(kw));
         
         let matchesStatus = true;
         if (statusFilter === 'done') matchesStatus = isDone;
@@ -147,14 +150,26 @@ function clearSearch() {
 }
 
 function clearKeyword() {
-    document.getElementById('keywordFilter').value = '';
+    document.querySelectorAll('.kw-checkbox').forEach(cb => cb.checked = false);
     filterJobs();
 }
 
 function clearNegativeKeyword() {
-    document.getElementById('negativeKeywordFilter').value = '';
+    document.querySelectorAll('.neg-kw-checkbox').forEach(cb => cb.checked = false);
     filterJobs();
 }
+
+function toggleDropdown(id) {
+    const el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.multi-select')) {
+        document.querySelectorAll('.dropdown-content').forEach(d => d.style.display = 'none');
+    }
+});
 
 function clearStatus() {
     document.getElementById('statusFilter').value = '';
@@ -244,21 +259,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const negBadges = document.querySelectorAll('.negative-badge');
     negBadges.forEach(b => negKeywords.add(b.innerText.trim().toLowerCase()));
     
-    const keywordSelect = document.getElementById('keywordFilter');
+    const keywordDropdown = document.getElementById('keywordDropdown');
     Array.from(keywords).sort().forEach(kw => {
-        const option = document.createElement('option');
-        option.value = kw;
-        option.textContent = kw.charAt(0).toUpperCase() + kw.slice(1);
-        keywordSelect.appendChild(option);
+        const label = document.createElement('label');
+        label.style.display = 'block';
+        label.style.marginBottom = '5px';
+        label.style.cursor = 'pointer';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = kw;
+        checkbox.className = 'kw-checkbox';
+        checkbox.style.marginRight = '8px';
+        checkbox.onchange = filterJobs;
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(kw.charAt(0).toUpperCase() + kw.slice(1)));
+        keywordDropdown.appendChild(label);
     });
 
-    const negKeywordSelect = document.getElementById('negativeKeywordFilter');
-    if(negKeywordSelect) {
+    const negKeywordDropdown = document.getElementById('negKeywordDropdown');
+    if(negKeywordDropdown) {
         Array.from(negKeywords).sort().forEach(kw => {
-            const option = document.createElement('option');
-            option.value = kw;
-            option.textContent = kw.charAt(0).toUpperCase() + kw.slice(1);
-            negKeywordSelect.appendChild(option);
+            const label = document.createElement('label');
+            label.style.display = 'block';
+            label.style.marginBottom = '5px';
+            label.style.cursor = 'pointer';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = kw;
+            checkbox.className = 'neg-kw-checkbox';
+            checkbox.style.marginRight = '8px';
+            checkbox.onchange = filterJobs;
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(kw.charAt(0).toUpperCase() + kw.slice(1)));
+            negKeywordDropdown.appendChild(label);
         });
     }
     
