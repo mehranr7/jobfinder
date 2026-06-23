@@ -1,7 +1,7 @@
 import sys
 import re
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urljoin
 import yaml
 from bs4 import BeautifulSoup
@@ -34,6 +34,40 @@ def clean_text(html_content):
     text = re.sub(r'\n\s*\n', '\n\n', text)
     return text
 
+def parse_relative_date(date_text):
+    """
+    Parses English or German relative date strings into an absolute ISO8601 string.
+    Returns the original string if parsing fails.
+    """
+    if not date_text:
+        return datetime.now().isoformat(timespec='seconds')
+        
+    date_text = date_text.lower().strip()
+    now = datetime.now()
+    
+    if 'heute' in date_text or 'today' in date_text or 'gerade' in date_text or 'just now' in date_text:
+        return now.isoformat(timespec='seconds')
+    if 'gestern' in date_text or 'yesterday' in date_text:
+        return (now - timedelta(days=1)).isoformat(timespec='seconds')
+        
+    match = re.search(r'(\d+)\s*([a-zA-Zäöüß]+)', date_text)
+    if match:
+        num = int(match.group(1))
+        unit = match.group(2)
+        
+        if 'minut' in unit or unit in ('m', 'min'):
+            return (now - timedelta(minutes=num)).isoformat(timespec='seconds')
+        elif 'stund' in unit or 'hour' in unit or unit in ('h', 'hr', 'hrs'):
+            return (now - timedelta(hours=num)).isoformat(timespec='seconds')
+        elif 'tag' in unit or 'day' in unit or unit in ('d',):
+            return (now - timedelta(days=num)).isoformat(timespec='seconds')
+        elif 'woch' in unit or 'week' in unit or unit in ('w', 'wk', 'wks'):
+            return (now - timedelta(weeks=num)).isoformat(timespec='seconds')
+        elif 'monat' in unit or 'month' in unit or unit in ('mo', 'mos'):
+            return (now - timedelta(days=num*30)).isoformat(timespec='seconds')
+            
+    return date_text
+
 def scrape_stellenwerk(page, url):
     """
     Scrapes job offers from a Stellenwerk URL using Playwright.
@@ -64,7 +98,8 @@ def scrape_stellenwerk(page, url):
         date = "Unknown"
         date_tag = a_tag.find("p", class_=re.compile("text-right"))
         if date_tag:
-            date = date_tag.get_text(strip=True)
+            date_raw = date_tag.get_text(strip=True)
+            date = parse_relative_date(date_raw)
             
         card_text = a_tag.get_text(separator=' ', strip=True)
         
@@ -140,7 +175,8 @@ def scrape_stepstone(page, url):
         job_link = urljoin(url, job_a_tag["href"])
         
         time_tag = article.find("time")
-        date = time_tag.get_text(strip=True) if time_tag else "Unknown"
+        date_raw = time_tag.get_text(strip=True) if time_tag else "Unknown"
+        date = parse_relative_date(date_raw)
         
         card_text = article.get_text(separator=' ', strip=True)
         

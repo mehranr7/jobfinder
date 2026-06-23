@@ -207,7 +207,7 @@
             <h2 class="job-title">{{ job.title }}</h2>
             <div class="job-meta">
                 <span><strong>Company:</strong> {{ job.company }}</span> | 
-                <span><strong>Date:</strong> {{ job.date_of_release }}</span> | 
+                <span><strong>Date:</strong> {{ job.date_of_release | timeago }}</span> | 
                 <span><strong>Keywords:</strong> 
                     {% for kw in pos_kws %}
                         {% if kw.strip() %}<span class="keyword-badge">{{ kw.strip() }}</span>{% endif %}
