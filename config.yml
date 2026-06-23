@@ -2,12 +2,17 @@ delay_min_ms: 1000
 delay_max_ms: 1500
 
 stellenwerk_link: "https://www.stellenwerk.de/hamburg"
-stellenwerk_pages: 2
+stellenwerk_pages: 6
 
 stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-stepstone_pages: 2
+stepstone_pages: 5
 keywords:
   - "Werkstudent"
+  - "Studierende"
+  - "Informatik"
+  - "Computer"
+  - "Büro"
+  - "Office"
   - "Working Student"
   - "Praktikum"
   - "Praktikant"
@@ -101,7 +106,10 @@ keywords:
   - "Research"
   - "Software"
   - "Support"
-  - "Office"
+  - "Website"
+  - "Wordpress"
+  - "Bar"
+  - "Restaurant"
 negative_keywords:
   - "Senior"
   - "Lead"
@@ -116,3 +124,6 @@ negative_keywords:
   - "Chain"
   - "Hard"
   - "Rapid"
+  - "MRI"
+  - "Vollzeit"
+  - "Full-time"

@@ -12,16 +12,28 @@ import utils
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-with open("config.yml", "r", encoding="utf-8") as f:
-    config = yaml.safe_load(f)
+STELLENWERK_LINK = ""
+STELLENWERK_PAGES = 1
+STEPSTONE_LINK = ""
+STEPSTONE_PAGES = 1
+TARGET_URLS = []
+KEYWORDS = []
+NEGATIVE_KEYWORDS = []
+DELAY_MIN_MS = 1500
+DELAY_MAX_MS = 3500
 
-STELLENWERK_LINK = config.get("stellenwerk_link", "")
-STELLENWERK_PAGES = config.get("stellenwerk_pages", 1)
+def load_config():
+    global STELLENWERK_LINK, STELLENWERK_PAGES, STEPSTONE_LINK, STEPSTONE_PAGES
+    global TARGET_URLS, KEYWORDS, NEGATIVE_KEYWORDS, DELAY_MIN_MS, DELAY_MAX_MS
 
-STEPSTONE_LINK = config.get("stepstone_link", "")
-STEPSTONE_PAGES = config.get("stepstone_pages", 1)
+    with open("config.yml", "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
 
-def get_target_urls():
+    STELLENWERK_LINK = config.get("stellenwerk_link", "")
+    STELLENWERK_PAGES = config.get("stellenwerk_pages", 1)
+    STEPSTONE_LINK = config.get("stepstone_link", "")
+    STEPSTONE_PAGES = config.get("stepstone_pages", 1)
+
     urls = []
     if STELLENWERK_LINK:
         sep = "&" if "?" in STELLENWERK_LINK else "?"
@@ -54,13 +66,11 @@ def get_target_urls():
                     "page": i
                 })
                 
-    return urls
-
-TARGET_URLS = get_target_urls()
-KEYWORDS = config.get("keywords", [])
-NEGATIVE_KEYWORDS = config.get("negative_keywords", [])
-DELAY_MIN_MS = config.get("delay_min_ms", 1500)
-DELAY_MAX_MS = config.get("delay_max_ms", 3500)
+    TARGET_URLS = urls
+    KEYWORDS = config.get("keywords", [])
+    NEGATIVE_KEYWORDS = config.get("negative_keywords", [])
+    DELAY_MIN_MS = config.get("delay_min_ms", 1500)
+    DELAY_MAX_MS = config.get("delay_max_ms", 3500)
 
 
 
@@ -212,6 +222,7 @@ def main(log_queue=None):
     extracts the jobs using the appropriate parser, deep-scrapes the descriptions,
     and inserts them into the SQLite database.
     """
+    load_config()
     database.init_db()
     
     # Sort URLs alphabetically to group them by domain in the console output
