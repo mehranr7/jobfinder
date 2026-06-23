@@ -1,15 +1,45 @@
 # Job Finder
 
-A powerful web scraper built with Playwright to fetch, filter, and organize job offers from various portals (Stellenwerk, Indeed, Stepstone). It generates a local, interactive HTML report with advanced sorting, filtering, and local state-tracking capabilities.
+A powerful, containerized web application built with Python, Flask, and Playwright to fetch, filter, and organize job offers from various portals (Stellenwerk and Stepstone). It provides a sleek, dark-themed UI to manage your job hunt locally using an SQLite database.
 
 ## Features
-- **Headless Browser Scraping**: Uses Playwright to bypass basic anti-bot protections.
-- **Categorized Results**: Groups scraped jobs by domain for readability.
-- **Interactive Report**: Generates a `results.html` file with JavaScript-based filtering (by keyword, status) and sorting (by date, title).
-- **"Mark as Done" Tracking**: Keeps track of processed jobs using your browser's local storage so you don't evaluate the same job twice.
-- **YAML Configuration**: Easily manage URLs and keywords via `config.yml`.
+- **Headless Browser Scraping**: Uses Playwright to bypass basic anti-bot protections and deep-scrape job descriptions.
+- **Dynamic Configuration & Pagination**: Automatically generates target URLs for multiple pages based on a clean `config.yml` setup.
+- **Interactive Web UI**: A beautiful, dark-themed Flask frontend built with custom CSS and JavaScript.
+- **Live Scraper Updates**: Watch new jobs stream into your UI live via Server-Sent Events (SSE) while the scraper runs in the background.
+- **Advanced Filtering & Sorting**: Use multi-select dropdowns to instantly filter jobs by positive and negative keywords.
+- **Database Tracking**: Jobs are stored in a local SQLite database (`jobs.db`). Mark jobs as "Done" or delete them permanently so you never review the same job twice.
 
-## Installation
+## Requirements
+- Docker and Docker Compose
+
+## Quickstart
+
+1. **Configure Your Scraper**
+   Edit `config.yml` to define your target base URLs, the number of pages to scrape, and your positive/negative keywords:
+   ```yaml
+   stellenwerk_link: "https://www.stellenwerk.de/hamburg"
+   stellenwerk_pages: 2
+
+   stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?..."
+   stepstone_pages: 2
+   ```
+
+2. **Run with Docker Compose**
+   Build and start the application container in detached mode:
+   ```bash
+   docker-compose up -d --build
+   ```
+
+3. **Open the Web UI**
+   Visit [http://localhost:5000](http://localhost:5000) in your browser.
+
+4. **Start Scraping**
+   Click the **"🚀 Run Scraper"** button in the UI to launch the Playwright script in the background. The terminal log will show real-time progress, and new jobs will dynamically appear in your list!
+
+## Development & Manual Setup
+
+If you prefer to run the app outside of Docker:
 
 1. Install Python dependencies:
    ```bash
@@ -19,12 +49,7 @@ A powerful web scraper built with Playwright to fetch, filter, and organize job 
    ```bash
    playwright install chromium
    ```
-
-## Usage
-
-1. Configure your target URLs and keywords in `config.yml`.
-2. Run the scraper:
+3. Run the Flask server:
    ```bash
-   python scraper.py
+   python app.py
    ```
-3. Open the generated `results.html` in your browser to view and track your job offers!
