@@ -102,9 +102,14 @@ function deleteJob(btn, link) {
 }
 
 function filterJobs() {
-    const textFilter = document.getElementById('filterInput').value.toLowerCase();
-    const keywordFilter = document.getElementById('keywordFilter').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
+    const searchInput = document.getElementById('searchInput');
+    const textFilter = searchInput ? searchInput.value.toLowerCase() : "";
+    
+    const keywordInput = document.getElementById('keywordFilter');
+    const keywordFilter = keywordInput ? keywordInput.value.toLowerCase() : "";
+    
+    const statusSelect = document.getElementById('statusFilter');
+    const statusFilter = statusSelect ? statusSelect.value : "";
     
     let visibleCount = 0;
     
@@ -118,7 +123,7 @@ function filterJobs() {
         
         let matchesStatus = true;
         if (statusFilter === 'done') matchesStatus = isDone;
-        if (statusFilter === 'todo') matchesStatus = !isDone;
+        if (statusFilter === 'undone') matchesStatus = !isDone;
         
         if (matchesText && matchesKeyword && matchesStatus) {
             card.style.display = 'block';
