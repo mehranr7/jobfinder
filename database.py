@@ -23,12 +23,18 @@ def init_db():
             negative_keywords TEXT,
             description TEXT,
             description_tags TEXT,
+            neg_description_tags TEXT,
             is_done BOOLEAN DEFAULT 0,
             discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     try:
         c.execute('ALTER TABLE jobs ADD COLUMN description_tags TEXT DEFAULT ""')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
+    try:
+        c.execute('ALTER TABLE jobs ADD COLUMN neg_description_tags TEXT DEFAULT ""')
     except sqlite3.OperationalError:
         pass # Column already exists
     conn.commit()
@@ -47,8 +53,8 @@ def insert_job(job_dict):
     c = conn.cursor()
     try:
         c.execute('''
-            INSERT INTO jobs (link, title, company, date_of_release, keywords, negative_keywords, description, description_tags, is_done)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO jobs (link, title, company, date_of_release, keywords, negative_keywords, description, description_tags, neg_description_tags, is_done)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             job_dict.get('link'),
             job_dict.get('title'),
@@ -58,6 +64,7 @@ def insert_job(job_dict):
             job_dict.get('negative_keyword', ''),
             job_dict.get('description', ''),
             job_dict.get('description_tags', ''),
+            job_dict.get('neg_description_tags', ''),
             False
         ))
         conn.commit()

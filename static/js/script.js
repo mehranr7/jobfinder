@@ -108,6 +108,7 @@ function filterJobs() {
     const selectedKws = Array.from(document.querySelectorAll('.kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
     const selectedNegKws = Array.from(document.querySelectorAll('.neg-kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
     const selectedDescTags = Array.from(document.querySelectorAll('.desc-tag-checkbox:checked')).map(cb => cb.value.toLowerCase());
+    const selectedNegDescTags = Array.from(document.querySelectorAll('.neg-desc-tag-checkbox:checked')).map(cb => cb.value.toLowerCase());
     
     const kwTitle = document.getElementById('keywordSelectTitle');
     if (kwTitle) kwTitle.innerText = selectedKws.length > 0 ? `${selectedKws.length} Selected` : 'All Keywords';
@@ -117,6 +118,9 @@ function filterJobs() {
 
     const descTagTitle = document.getElementById('descTagSelectTitle');
     if (descTagTitle) descTagTitle.innerText = selectedDescTags.length > 0 ? `${selectedDescTags.length} Selected` : 'All Description Tags';
+
+    const negDescTagTitle = document.getElementById('negDescTagSelectTitle');
+    if (negDescTagTitle) negDescTagTitle.innerText = selectedNegDescTags.length > 0 ? `${selectedNegDescTags.length} Selected` : 'All Neg Desc Tags';
     
     const statusSelect = document.getElementById('statusFilter');
     const statusFilter = statusSelect ? statusSelect.value : "";
@@ -131,18 +135,20 @@ function filterJobs() {
         const posKwsList = card.getAttribute('data-pos-keyword').split(',').map(s => s.trim());
         const negKwsList = card.getAttribute('data-neg-keyword').split(',').map(s => s.trim());
         const descTagsList = (card.getAttribute('data-desc-tags') || "").split(',').map(s => s.trim());
+        const negDescTagsList = (card.getAttribute('data-neg-desc-tags') || "").split(',').map(s => s.trim());
         
         let matchesText = title.includes(textFilter) || kws.includes(textFilter);
         let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => posKwsList.includes(kw));
         // Show jobs that HAVE at least one of the selected negative keywords
         let matchesNegKeyword = selectedNegKws.length === 0 || selectedNegKws.some(kw => negKwsList.includes(kw));
         let matchesDescTag = selectedDescTags.length === 0 || selectedDescTags.some(tag => descTagsList.includes(tag));
+        let matchesNegDescTag = selectedNegDescTags.length === 0 || selectedNegDescTags.some(tag => negDescTagsList.includes(tag));
         
         let matchesStatus = true;
         if (statusFilter === 'done') matchesStatus = isDone;
         if (statusFilter === 'undone') matchesStatus = !isDone;
         
-        if (matchesText && matchesKeyword && matchesNegKeyword && matchesDescTag && matchesStatus) {
+        if (matchesText && matchesKeyword && matchesNegKeyword && matchesDescTag && matchesNegDescTag && matchesStatus) {
             card.style.display = 'block';
             visibleCount++;
         } else {
@@ -170,6 +176,11 @@ function clearNegativeKeyword() {
 
 function clearDescTag() {
     document.querySelectorAll('.desc-tag-checkbox').forEach(cb => cb.checked = false);
+    filterJobs();
+}
+
+function clearNegDescTag() {
+    document.querySelectorAll('.neg-desc-tag-checkbox').forEach(cb => cb.checked = false);
     filterJobs();
 }
 
@@ -403,6 +414,35 @@ function populateDropdowns() {
             label.appendChild(checkbox);
             label.appendChild(document.createTextNode(tag.charAt(0).toUpperCase() + tag.slice(1)));
             descTagDropdown.appendChild(label);
+        });
+    }
+
+    // Populate Negative Description Tags dropdown
+    const negDescTags = new Set();
+    window.jobCards.forEach(card => {
+        const tags = (card.getAttribute('data-neg-desc-tags') || "").split(',');
+        tags.forEach(t => {
+            if(t.trim()) negDescTags.add(t.trim().toLowerCase());
+        });
+    });
+
+    const negDescTagDropdown = document.getElementById('negDescTagDropdown');
+    if(negDescTagDropdown) {
+        negDescTagDropdown.innerHTML = '';
+        Array.from(negDescTags).sort().forEach(tag => {
+            const label = document.createElement('label');
+            label.style.display = 'block';
+            label.style.marginBottom = '5px';
+            label.style.cursor = 'pointer';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = tag;
+            checkbox.className = 'neg-desc-tag-checkbox';
+            checkbox.style.marginRight = '8px';
+            checkbox.onchange = filterJobs;
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(tag.charAt(0).toUpperCase() + tag.slice(1)));
+            negDescTagDropdown.appendChild(label);
         });
     }
 }
