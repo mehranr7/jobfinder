@@ -1,18 +1,18 @@
-# Use the official Microsoft Playwright image as the base
-# This image already contains the system dependencies required to run headless browsers
-FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
+# Use a lightweight Python base image instead of the massive Playwright image
+FROM python:3.11-slim
 
 # Set the working directory
 WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
+# Copy requirements first
 COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Explicitly install the Chromium browser for Playwright
-RUN playwright install chromium
+# Install ONLY Chromium and its specific system dependencies
+# This avoids downloading Firefox, WebKit, and unnecessary OS libraries
+RUN playwright install --with-deps chromium
 
 # Copy the rest of the application
 COPY . .
