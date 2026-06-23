@@ -1,12 +1,14 @@
 import sys
 import re
 import random
-from datetime import datetime, timedelta
 from urllib.parse import urljoin
 import yaml
 from bs4 import BeautifulSoup
+import re
 from playwright.sync_api import sync_playwright
 import database
+import sys
+import utils
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -19,54 +21,7 @@ NEGATIVE_KEYWORDS = config.get("negative_keywords", [])
 DELAY_MIN_MS = config.get("delay_min_ms", 1500)
 DELAY_MAX_MS = config.get("delay_max_ms", 3500)
 
-def truncate(s, length=60):
-    return s if len(s) <= length else s[:length-3] + "..."
 
-def clean_text(html_content):
-    """
-    Cleans raw HTML content by removing scripts, styles, and other non-visible elements.
-    Returns the visible text cleanly formatted with line breaks.
-    """
-    soup = BeautifulSoup(html_content, 'html.parser')
-    for tag in soup(["script", "style", "header", "footer", "nav", "noscript", "svg", "img"]):
-        tag.extract()
-    text = soup.get_text(separator='\n', strip=True)
-    text = re.sub(r'\n\s*\n', '\n\n', text)
-    return text
-
-def parse_relative_date(date_text):
-    """
-    Parses English or German relative date strings into an absolute ISO8601 string.
-    Returns the original string if parsing fails.
-    """
-    if not date_text:
-        return datetime.now().isoformat(timespec='seconds')
-        
-    date_text = date_text.lower().strip()
-    now = datetime.now()
-    
-    if 'heute' in date_text or 'today' in date_text or 'gerade' in date_text or 'just now' in date_text:
-        return now.isoformat(timespec='seconds')
-    if 'gestern' in date_text or 'yesterday' in date_text:
-        return (now - timedelta(days=1)).isoformat(timespec='seconds')
-        
-    match = re.search(r'(\d+)\s*([a-zA-Zäöüß]+)', date_text)
-    if match:
-        num = int(match.group(1))
-        unit = match.group(2)
-        
-        if 'minut' in unit or unit in ('m', 'min'):
-            return (now - timedelta(minutes=num)).isoformat(timespec='seconds')
-        elif 'stund' in unit or 'hour' in unit or unit in ('h', 'hr', 'hrs'):
-            return (now - timedelta(hours=num)).isoformat(timespec='seconds')
-        elif 'tag' in unit or 'day' in unit or unit in ('d',):
-            return (now - timedelta(days=num)).isoformat(timespec='seconds')
-        elif 'woch' in unit or 'week' in unit or unit in ('w', 'wk', 'wks'):
-            return (now - timedelta(weeks=num)).isoformat(timespec='seconds')
-        elif 'monat' in unit or 'month' in unit or unit in ('mo', 'mos'):
-            return (now - timedelta(days=num*30)).isoformat(timespec='seconds')
-            
-    return date_text
 
 def scrape_stellenwerk(page, url):
     """
@@ -176,7 +131,7 @@ def scrape_stepstone(page, url):
         
         time_tag = article.find("time")
         date_raw = time_tag.get_text(strip=True) if time_tag else "Unknown"
-        date = parse_relative_date(date_raw)
+        date = utils.parse_relative_date(date_raw)
         
         card_text = article.get_text(separator=' ', strip=True)
         
@@ -261,11 +216,11 @@ def main(log_queue=None):
                     continue
                 
                 new_jobs += 1
-                title_disp = truncate(job['title'], 50)
+                title_disp = utils.truncate(job['title'], 50)
                 
-                kw_disp = truncate(job['keyword'], 20)
+                kw_disp = utils.truncate(job['keyword'], 20)
                 if job['negative_keyword']:
-                    kw_disp += f" (Neg: {truncate(job['negative_keyword'], 10)})"
+                    kw_disp += f" (Neg: {utils.truncate(job['negative_keyword'], 10)})"
                 
                 # Build progress string without carriage returns for the web UI
                 progress = int(50 * (i + 1) / total_jobs) if total_jobs > 0 else 0
@@ -281,7 +236,7 @@ def main(log_queue=None):
                     page.goto(job['link'], timeout=15000)
                     page.wait_for_load_state("domcontentloaded")
                     html = page.content()
-                    job['description'] = clean_text(html)
+                    job['description'] = utils.clean_text(html)
                 except Exception as e:
                     job['description'] = "Failed to extract content."
                     

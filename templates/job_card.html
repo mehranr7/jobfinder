@@ -1,0 +1,32 @@
+{% set pos_kws = job.keyword.split(',') if job.keyword else [] %}
+{% set neg_kws = job.negative_keyword.split(',') if job.negative_keyword else [] %}
+{% set data_kws = job.keyword + " " + job.negative_keyword %}
+
+<div class="job-card {% if job.is_done %}done{% endif %}" data-title="{{ job.title|lower }}"
+    data-keyword="{{ data_kws }}" data-url="{{ job.link }}">
+    <h2 class="job-title">{{ job.title }}</h2>
+    <div class="job-meta">
+        <span class="meta-item">🏢 <strong>{{ job.company }}</strong></span>
+        <span class="meta-item">🕒 {{ job.date_of_release | timeago }}</span>
+        <span class="meta-item">
+            {% for kw in pos_kws %}
+            {% if kw.strip() %}<span class="keyword-badge">{{ kw.strip() }}</span>{% endif %}
+            {% endfor %}
+            {% for kw in neg_kws %}
+            {% if kw.strip() %}<span class="keyword-badge negative-badge">{{ kw.strip() }}</span>{% endif %}
+            {% endfor %}
+        </span>
+        <a href="{{ job.link }}" target="_blank" class="view-offer-btn">🔗 View Offer</a>
+    </div>
+
+    <div class="desc-header">
+        <button class="toggle-desc-btn" onclick="toggleDescription('desc-{{ loop.index }}', this)">▼ Show
+            Description</button>
+        <button class="clear-btn" onclick="deleteJob(this, '{{ job.link }}')">🗑️ Delete</button>
+        <button class="done-btn" onclick="toggleDone(this, '{{ job.link }}')">
+            {% if job.is_done %}Undo Done{% else %}✓ Mark as Done{% endif %}
+        </button>
+        <button class="copy-btn" onclick="copyToClipboard('desc-{{ loop.index }}', this)">Copy</button>
+    </div>
+    <div class="job-description" id="desc-{{ loop.index }}">{{ job.description | safe }}</div>
+</div>
