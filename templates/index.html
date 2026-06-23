@@ -40,6 +40,10 @@
 
         <div class="controls">
             <div class="control-group">
+                <input type="text" id="searchInput" placeholder="Search by title or keyword..." onkeyup="filterJobs()">
+                <button class="clear-btn" onclick="clearSearch()">Clear</button>
+            </div>
+            <div class="control-group">
                 <select id="statusFilter" onchange="filterJobs()">
                     <option value="">All Statuses</option>
                     <option value="done">Done</option>
@@ -48,8 +52,13 @@
                 <button class="clear-btn" onclick="clearStatus()">Clear</button>
             </div>
             <div class="control-group">
-                <input type="text" id="searchInput" placeholder="Search by title or keyword..." onkeyup="filterJobs()">
-                <button class="clear-btn" onclick="clearSearch()">Clear</button>
+                <select id="sortSelect" onchange="sortJobs()">
+                    <option value="date-desc" selected>Date (Newest First)</option>
+                    <option value="date-asc">Date (Oldest First)</option>
+                    <option value="title-asc">Title (A-Z)</option>
+                    <option value="title-desc">Title (Z-A)</option>
+                    <option value="keyword-asc">Keyword (A-Z)</option>
+                </select>
             </div>
             <div class="control-group">
                 <div class="multi-select" id="keywordSelectContainer" style="position: relative; width: 220px;">
@@ -83,15 +92,6 @@
                     </div>
                 </div>
                 <button class="clear-btn" onclick="clearNegativeKeyword()">Clear</button>
-            </div>
-            <div class="control-group">
-                <select id="sortSelect" onchange="sortJobs()">
-                    <option value="date-desc" selected>Date (Newest First)</option>
-                    <option value="date-asc">Date (Oldest First)</option>
-                    <option value="title-asc">Title (A-Z)</option>
-                    <option value="title-desc">Title (Z-A)</option>
-                    <option value="keyword-asc">Keyword (A-Z)</option>
-                </select>
             </div>
         </div>
 
