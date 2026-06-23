@@ -1,5 +1,6 @@
 delay_min_ms: 1000
 delay_max_ms: 1500
+special_keyword_threshold: 3
 
 stellenwerk_link: "https://www.stellenwerk.de/hamburg"
 stellenwerk_pages: 6

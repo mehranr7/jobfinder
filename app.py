@@ -7,7 +7,17 @@ import queue
 
 import utils
 
+import yaml
+
 app = Flask(__name__)
+
+def get_special_threshold():
+    try:
+        with open("config.yml", "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        return config.get("special_keyword_threshold", 3)
+    except Exception:
+        return 3
 
 @app.template_filter('timeago')
 def timeago_filter(dt_string):
@@ -16,12 +26,14 @@ def timeago_filter(dt_string):
 @app.route('/')
 def index():
     jobs = database.get_all_jobs()
-    return render_template('index.html', jobs=jobs)
+    threshold = get_special_threshold()
+    return render_template('index.html', jobs=jobs, special_threshold=threshold)
 
 @app.route('/api/get_job_cards')
 def get_job_cards():
     jobs = database.get_all_jobs()
-    return render_template('job_cards.html', jobs=jobs)
+    threshold = get_special_threshold()
+    return render_template('job_cards.html', jobs=jobs, special_threshold=threshold)
 
 @app.route('/api/toggle_done', methods=['POST'])
 def toggle_done():

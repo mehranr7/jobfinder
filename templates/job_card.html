@@ -4,7 +4,7 @@
 {% set neg_desc_tags = job.neg_description_tags.split(',') if job.neg_description_tags else [] %}
 {% set data_kws = ((job.keywords or '') ~ " " ~ (job.negative_keywords or ''))|lower %}
 
-<div class="job-card {% if job.is_done %}done{% endif %}" data-title="{{ job.title|lower }}"
+<div class="job-card {% if job.is_done %}done{% endif %} {% if pos_kws|length > special_threshold %}special-offer{% endif %}" data-title="{{ job.title|lower }}"
     data-keyword="{{ data_kws }}" data-pos-keyword="{{ pos_kws|join(',')|lower }}" data-neg-keyword="{{ neg_kws|join(',')|lower }}" data-desc-tags="{{ desc_tags|join(',')|lower }}" data-neg-desc-tags="{{ neg_desc_tags|join(',')|lower }}" data-url="{{ job.link }}" data-date="{{ job.date_of_release }}">
     <h2 class="job-title">{{ job.title }}</h2>
     <div class="job-meta">
