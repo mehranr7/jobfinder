@@ -286,8 +286,18 @@ def main(log_queue=None):
                     page.wait_for_load_state("domcontentloaded")
                     html = page.content()
                     job['description'] = utils.clean_text(html)
+                    
+                    desc_tags = []
+                    for kw in KEYWORDS:
+                        if re.search(r'\b' + re.escape(kw) + r'\b', job['description'], re.IGNORECASE):
+                            desc_tags.append(kw)
+                    # Deduplicate while preserving order
+                    seen = set()
+                    unique_tags = [x for x in desc_tags if not (x in seen or seen.add(x))]
+                    job['description_tags'] = ", ".join(unique_tags)
                 except Exception as e:
                     job['description'] = "Failed to extract content."
+                    job['description_tags'] = ""
                     
                 # Insert into DB
                 database.insert_job(job)

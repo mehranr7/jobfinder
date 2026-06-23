@@ -1,9 +1,10 @@
 {% set pos_kws = job.keywords.split(',') if job.keywords else [] %}
 {% set neg_kws = job.negative_keywords.split(',') if job.negative_keywords else [] %}
+{% set desc_tags = job.description_tags.split(',') if job.description_tags else [] %}
 {% set data_kws = ((job.keywords or '') ~ " " ~ (job.negative_keywords or ''))|lower %}
 
 <div class="job-card {% if job.is_done %}done{% endif %}" data-title="{{ job.title|lower }}"
-    data-keyword="{{ data_kws }}" data-pos-keyword="{{ pos_kws|join(',')|lower }}" data-neg-keyword="{{ neg_kws|join(',')|lower }}" data-url="{{ job.link }}" data-date="{{ job.date_of_release }}">
+    data-keyword="{{ data_kws }}" data-pos-keyword="{{ pos_kws|join(',')|lower }}" data-neg-keyword="{{ neg_kws|join(',')|lower }}" data-desc-tags="{{ desc_tags|join(',')|lower }}" data-url="{{ job.link }}" data-date="{{ job.date_of_release }}">
     <h2 class="job-title">{{ job.title }}</h2>
     <div class="job-meta">
         <span class="meta-item">🏢 <strong>{{ job.company }}</strong></span>
@@ -18,6 +19,16 @@
         </span>
         <a href="{{ job.link }}" target="_blank" class="view-offer-btn">🔗 View Offer</a>
     </div>
+    
+    {% if desc_tags %}
+    <div class="job-meta" style="margin-top: 5px;">
+        <span class="meta-item" style="color: #7f8c8d; font-size: 0.85em;">🔍 Deep Tags:
+            {% for tag in desc_tags %}
+            {% if tag.strip() %}<span class="keyword-badge" style="background-color: transparent; border: 1px solid #bdc3c7; color: #7f8c8d; font-size: 0.9em; padding: 2px 6px; margin-left: 4px;">{{ tag.strip() }}</span>{% endif %}
+            {% endfor %}
+        </span>
+    </div>
+    {% endif %}
 
     <div class="desc-header">
         <button class="toggle-desc-btn" onclick="toggleDescription('desc-{{ loop_index }}', this)">▼ Show

@@ -107,12 +107,16 @@ function filterJobs() {
     
     const selectedKws = Array.from(document.querySelectorAll('.kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
     const selectedNegKws = Array.from(document.querySelectorAll('.neg-kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
+    const selectedDescTags = Array.from(document.querySelectorAll('.desc-tag-checkbox:checked')).map(cb => cb.value.toLowerCase());
     
     const kwTitle = document.getElementById('keywordSelectTitle');
     if (kwTitle) kwTitle.innerText = selectedKws.length > 0 ? `${selectedKws.length} Selected` : 'All Keywords';
     
     const negKwTitle = document.getElementById('negKeywordSelectTitle');
     if (negKwTitle) negKwTitle.innerText = selectedNegKws.length > 0 ? `${selectedNegKws.length} Selected` : 'All Negative Keywords';
+
+    const descTagTitle = document.getElementById('descTagSelectTitle');
+    if (descTagTitle) descTagTitle.innerText = selectedDescTags.length > 0 ? `${selectedDescTags.length} Selected` : 'All Description Tags';
     
     const statusSelect = document.getElementById('statusFilter');
     const statusFilter = statusSelect ? statusSelect.value : "";
@@ -126,17 +130,19 @@ function filterJobs() {
         
         const posKwsList = card.getAttribute('data-pos-keyword').split(',').map(s => s.trim());
         const negKwsList = card.getAttribute('data-neg-keyword').split(',').map(s => s.trim());
+        const descTagsList = (card.getAttribute('data-desc-tags') || "").split(',').map(s => s.trim());
         
         let matchesText = title.includes(textFilter) || kws.includes(textFilter);
         let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => posKwsList.includes(kw));
         // Show jobs that HAVE at least one of the selected negative keywords
         let matchesNegKeyword = selectedNegKws.length === 0 || selectedNegKws.some(kw => negKwsList.includes(kw));
+        let matchesDescTag = selectedDescTags.length === 0 || selectedDescTags.some(tag => descTagsList.includes(tag));
         
         let matchesStatus = true;
         if (statusFilter === 'done') matchesStatus = isDone;
         if (statusFilter === 'undone') matchesStatus = !isDone;
         
-        if (matchesText && matchesKeyword && matchesNegKeyword && matchesStatus) {
+        if (matchesText && matchesKeyword && matchesNegKeyword && matchesDescTag && matchesStatus) {
             card.style.display = 'block';
             visibleCount++;
         } else {
@@ -159,6 +165,11 @@ function clearKeyword() {
 
 function clearNegativeKeyword() {
     document.querySelectorAll('.neg-kw-checkbox').forEach(cb => cb.checked = false);
+    filterJobs();
+}
+
+function clearDescTag() {
+    document.querySelectorAll('.desc-tag-checkbox').forEach(cb => cb.checked = false);
     filterJobs();
 }
 
@@ -250,6 +261,9 @@ function fetchLatestJobs() {
             // Re-initialize jobCards list so filters keep working
             window.jobCards = Array.from(document.querySelectorAll('.job-card'));
             
+            // Re-populate dropdowns with new tags from newly added jobs
+            populateDropdowns();
+            
             // Re-apply filters and sorting
             filterJobs();
             sortJobs();
@@ -275,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.jobCards = Array.from(document.querySelectorAll('.job-card'));
     window.originalJobCards = [...window.jobCards];
     
+function populateDropdowns() {
     // Populate the keyword dropdowns
     const keywords = new Set();
     const negKeywords = new Set();
@@ -286,24 +301,28 @@ document.addEventListener('DOMContentLoaded', () => {
     negBadges.forEach(b => negKeywords.add(b.innerText.trim().toLowerCase()));
     
     const keywordDropdown = document.getElementById('keywordDropdown');
-    Array.from(keywords).sort().forEach(kw => {
-        const label = document.createElement('label');
-        label.style.display = 'block';
-        label.style.marginBottom = '5px';
-        label.style.cursor = 'pointer';
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = kw;
-        checkbox.className = 'kw-checkbox';
-        checkbox.style.marginRight = '8px';
-        checkbox.onchange = filterJobs;
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(kw.charAt(0).toUpperCase() + kw.slice(1)));
-        keywordDropdown.appendChild(label);
-    });
+    if (keywordDropdown) {
+        keywordDropdown.innerHTML = '';
+        Array.from(keywords).sort().forEach(kw => {
+            const label = document.createElement('label');
+            label.style.display = 'block';
+            label.style.marginBottom = '5px';
+            label.style.cursor = 'pointer';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = kw;
+            checkbox.className = 'kw-checkbox';
+            checkbox.style.marginRight = '8px';
+            checkbox.onchange = filterJobs;
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(kw.charAt(0).toUpperCase() + kw.slice(1)));
+            keywordDropdown.appendChild(label);
+        });
+    }
 
     const negKeywordDropdown = document.getElementById('negKeywordDropdown');
     if(negKeywordDropdown) {
+        negKeywordDropdown.innerHTML = '';
         Array.from(negKeywords).sort().forEach(kw => {
             const label = document.createElement('label');
             label.style.display = 'block';
@@ -320,6 +339,42 @@ document.addEventListener('DOMContentLoaded', () => {
             negKeywordDropdown.appendChild(label);
         });
     }
+
+    // Populate Description Tags dropdown
+    const descTags = new Set();
+    window.jobCards.forEach(card => {
+        const tags = (card.getAttribute('data-desc-tags') || "").split(',');
+        tags.forEach(t => {
+            if(t.trim()) descTags.add(t.trim().toLowerCase());
+        });
+    });
+
+    const descTagDropdown = document.getElementById('descTagDropdown');
+    if(descTagDropdown) {
+        descTagDropdown.innerHTML = '';
+        Array.from(descTags).sort().forEach(tag => {
+            const label = document.createElement('label');
+            label.style.display = 'block';
+            label.style.marginBottom = '5px';
+            label.style.cursor = 'pointer';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = tag;
+            checkbox.className = 'desc-tag-checkbox';
+            checkbox.style.marginRight = '8px';
+            checkbox.onchange = filterJobs;
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(tag.charAt(0).toUpperCase() + tag.slice(1)));
+            descTagDropdown.appendChild(label);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.jobCards = Array.from(document.querySelectorAll('.job-card'));
+    window.originalJobCards = [...window.jobCards];
+    
+    populateDropdowns();
     
     filterJobs(); // Initial count
     sortJobs();   // Initial sort based on default value
