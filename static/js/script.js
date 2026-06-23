@@ -234,6 +234,48 @@ function sortJobs() {
     applySortAndRender(true);
 }
 
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    filterJobs();
+}
+
+function clearKeyword() {
+    document.querySelectorAll('.kw-checkbox').forEach(cb => cb.checked = false);
+    filterJobs();
+}
+
+function clearNegativeKeyword() {
+    document.querySelectorAll('.neg-kw-checkbox').forEach(cb => cb.checked = false);
+    filterJobs();
+}
+
+function clearDescTag() {
+    document.querySelectorAll('.desc-tag-checkbox').forEach(cb => cb.checked = false);
+    filterJobs();
+}
+
+function clearNegDescTag() {
+    document.querySelectorAll('.neg-desc-tag-checkbox').forEach(cb => cb.checked = false);
+    filterJobs();
+}
+
+function clearStatus() {
+    document.getElementById('statusFilter').value = '';
+    filterJobs();
+}
+
+function toggleDropdown(id) {
+    const el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.multi-select')) {
+        document.querySelectorAll('.dropdown-content').forEach(d => d.style.display = 'none');
+    }
+});
+
 function runScraper() {
     const btn = document.getElementById('runScraperBtn');
     const pauseBtn = document.getElementById('pauseScraperBtn');
