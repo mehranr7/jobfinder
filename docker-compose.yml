@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  jobfinder:
+    build: .
+    container_name: jobfinder_app
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persist the database locally so it survives container restarts
+      - ./jobs.db:/app/jobs.db
+      # Persist the configuration locally so you can edit it without rebuilding
+      - ./config.yml:/app/config.yml
+    restart: unless-stopped

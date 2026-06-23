@@ -165,7 +165,15 @@ def scrape_stepstone(page, url):
             })
     return jobs
 
-def main():
+def emit_log(msg, log_queue=None):
+    """
+    Prints a message to the console and pushes it to the log_queue if provided.
+    """
+    print(msg)
+    if log_queue is not None:
+        log_queue.put(msg)
+
+def main(log_queue=None):
     """
     Main execution loop.
     Initializes the Playwright headless browser, loops through configured URLs,
@@ -186,6 +194,8 @@ def main():
         
         current_domain = ""
         
+        emit_log("--- SCRAPING STARTED ---", log_queue)
+        
         for url in sorted_urls:
             jobs = []
             
@@ -197,7 +207,7 @@ def main():
                 domain_name = "Unknown"
                 
             if domain_name != current_domain:
-                print(f"\n[ {domain_name} ]")
+                emit_log(f"\n[ {domain_name} ]", log_queue)
                 current_domain = domain_name
 
             if "stellenwerk" in url:
@@ -205,7 +215,7 @@ def main():
             elif "stepstone" in url:
                 jobs = scrape_stepstone(page, url)
             else:
-                print(f"Unknown domain for URL: {url}")
+                emit_log(f"Unknown domain for URL: {url}", log_queue)
                 continue
                 
             total_jobs = len(jobs)
@@ -217,19 +227,18 @@ def main():
                 new_jobs += 1
                 title_disp = truncate(job['title'], 50)
                 
-                
-                # Clear progress bar before printing new match
-                sys.stdout.write("\r" + " " * 100 + "\r")
                 kw_disp = truncate(job['keyword'], 20)
                 if job['negative_keyword']:
                     kw_disp += f" (Neg: {truncate(job['negative_keyword'], 10)})"
-                print(f"  -> NEW Match: {job['date']:>12} | {kw_disp:<35} | {title_disp}")
                 
-                # Draw progress bar
+                # Build progress string without carriage returns for the web UI
                 progress = int(50 * (i + 1) / total_jobs) if total_jobs > 0 else 0
                 bar = "█" * progress + "-" * (50 - progress)
-                sys.stdout.write(f"\r  -> Progress: [{bar}] {i+1}/{total_jobs}")
-                sys.stdout.flush()
+                
+                log_msg = f"  -> NEW Match: {job['date']:>12} | {kw_disp:<35} | {title_disp}\n"
+                log_msg += f"  -> Progress: [{bar}] {i+1}/{total_jobs}"
+                
+                emit_log(log_msg, log_queue)
                 
                 # Deep Scrape
                 try:
@@ -247,16 +256,14 @@ def main():
                 page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
                 
             if total_jobs > 0:
-                sys.stdout.write("\r" + " " * 100 + "\r")
-                print(f"  -> Found {total_jobs} total jobs. Deep scraped {new_jobs} new jobs.")
+                emit_log(f"  -> Found {total_jobs} total jobs. Deep scraped {new_jobs} new jobs.", log_queue)
                 
             # Slight delay between domain pages
             page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
                 
         browser.close()
         
-    print("\n--- SCRAPING FINISHED ---")
-    print("Run the Flask application (app.py) to view the jobs in your browser!")
+    emit_log("\n--- SCRAPING FINISHED ---", log_queue)
 
 if __name__ == "__main__":
     main()
