@@ -27,16 +27,32 @@ def get_target_urls():
         sep = "&" if "?" in STELLENWERK_LINK else "?"
         for i in range(STELLENWERK_PAGES):
             offset = i * 10
-            urls.append(f"{STELLENWERK_LINK}{sep}pagination%5Bstart%5D={offset}")
+            urls.append({
+                "url": f"{STELLENWERK_LINK}{sep}pagination%5Bstart%5D={offset}",
+                "domain": "Stellenwerk",
+                "page": i + 1
+            })
             
     if STEPSTONE_LINK:
-        urls.append(STEPSTONE_LINK)
+        urls.append({
+            "url": STEPSTONE_LINK,
+            "domain": "Stepstone",
+            "page": 1
+        })
         for i in range(2, STEPSTONE_PAGES + 1):
             if "?" in STEPSTONE_LINK:
                 parts = STEPSTONE_LINK.split("?", 1)
-                urls.append(f"{parts[0]}?page={i}&{parts[1]}")
+                urls.append({
+                    "url": f"{parts[0]}?page={i}&{parts[1]}",
+                    "domain": "Stepstone",
+                    "page": i
+                })
             else:
-                urls.append(f"{STEPSTONE_LINK}?page={i}")
+                urls.append({
+                    "url": f"{STEPSTONE_LINK}?page={i}",
+                    "domain": "Stepstone",
+                    "page": i
+                })
                 
     return urls
 
@@ -199,7 +215,7 @@ def main(log_queue=None):
     database.init_db()
     
     # Sort URLs alphabetically to group them by domain in the console output
-    sorted_urls = sorted(TARGET_URLS)
+    sorted_urls = sorted(TARGET_URLS, key=lambda x: (x["domain"], x["page"]))
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -212,23 +228,20 @@ def main(log_queue=None):
         
         emit_log("--- SCRAPING STARTED ---", log_queue)
         
-        for url in sorted_urls:
+        for target in sorted_urls:
+            url = target["url"]
+            domain_name = target["domain"]
+            page_num = target["page"]
+            
             jobs = []
             
-            if "stellenwerk" in url:
-                domain_name = "Stellenwerk"
-            elif "stepstone" in url:
-                domain_name = "Stepstone"
-            else:
-                domain_name = "Unknown"
-                
             if domain_name != current_domain:
                 emit_log(f"\n[ {domain_name} ]", log_queue)
                 current_domain = domain_name
 
-            if "stellenwerk" in url:
+            if domain_name == "Stellenwerk":
                 jobs = scrape_stellenwerk(page, url)
-            elif "stepstone" in url:
+            elif domain_name == "Stepstone":
                 jobs = scrape_stepstone(page, url)
             else:
                 emit_log(f"Unknown domain for URL: {url}", log_queue)
@@ -272,7 +285,7 @@ def main(log_queue=None):
                 page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
                 
             if total_jobs > 0:
-                emit_log(f"  -> Found {total_jobs} total jobs. Deep scraped {new_jobs} new jobs.", log_queue)
+                emit_log(f"  -> P.{page_num} - Found {total_jobs} total jobs. Deep scraped {new_jobs} new jobs.", log_queue)
                 
             # Slight delay between domain pages
             page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
