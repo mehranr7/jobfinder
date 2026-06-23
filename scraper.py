@@ -255,6 +255,8 @@ def main(log_queue=None):
         browser.close()
         
     emit_log("\n--- SCRAPING FINISHED ---", log_queue)
+    if log_queue is not None:
+        log_queue.put("DONE")
 
 if __name__ == "__main__":
     main()

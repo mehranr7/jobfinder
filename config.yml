@@ -12,7 +12,7 @@ target_urls:
   # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=70"
   # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=80"
   # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=90"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
+  - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
   # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=2&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
   # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=3&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
   # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=4&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
