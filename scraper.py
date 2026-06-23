@@ -12,8 +12,8 @@ sys.stdout.reconfigure(encoding='utf-8')
 with open("config.yml", "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
-TARGET_URLS = config.get("target_urls", [])
 KEYWORDS = config.get("keywords", [])
+NEGATIVE_KEYWORDS = config.get("negative_keywords", [])
 DELAY_MIN_MS = config.get("delay_min_ms", 1500)
 DELAY_MAX_MS = config.get("delay_max_ms", 3500)
 
@@ -66,18 +66,23 @@ def scrape_stellenwerk(page, url):
             
         card_text = a_tag.get_text(separator=' ', strip=True)
         
-        matched_keyword = None
+        matched_keywords = []
         for kw in KEYWORDS:
             if re.search(r'\b' + re.escape(kw) + r'\b', card_text, re.IGNORECASE):
-                matched_keyword = kw
-                break
+                matched_keywords.append(kw)
                 
-        if matched_keyword:
+        matched_negative_keywords = []
+        for nkw in NEGATIVE_KEYWORDS:
+            if re.search(r'\b' + re.escape(nkw) + r'\b', card_text, re.IGNORECASE):
+                matched_negative_keywords.append(nkw)
+                
+        if matched_keywords:
             jobs.append({
                 "title": title,
                 "date": date,
                 "link": job_link,
-                "keyword": matched_keyword
+                "keyword": ", ".join(matched_keywords),
+                "negative_keyword": ", ".join(matched_negative_keywords)
             })
     return jobs
 
@@ -136,18 +141,23 @@ def scrape_stepstone(page, url):
         
         card_text = article.get_text(separator=' ', strip=True)
         
-        matched_keyword = None
+        matched_keywords = []
         for kw in KEYWORDS:
             if re.search(r'\b' + re.escape(kw) + r'\b', card_text, re.IGNORECASE):
-                matched_keyword = kw
-                break
+                matched_keywords.append(kw)
                 
-        if matched_keyword:
+        matched_negative_keywords = []
+        for nkw in NEGATIVE_KEYWORDS:
+            if re.search(r'\b' + re.escape(nkw) + r'\b', card_text, re.IGNORECASE):
+                matched_negative_keywords.append(nkw)
+                
+        if matched_keywords:
             jobs.append({
                 "title": title,
                 "date": date,
                 "link": job_link,
-                "keyword": matched_keyword
+                "keyword": ", ".join(matched_keywords),
+                "negative_keyword": ", ".join(matched_negative_keywords)
             })
     return jobs
 
@@ -162,12 +172,22 @@ def generate_report(jobs, quiet=False):
     jobs_html = '<div class="jobs-container">\n'
     for i, job in enumerate(jobs):
         escaped_desc = job['description'].replace('<', '&lt;').replace('>', '&gt;')
+        
+        pos_badges = "".join([f'<span class="keyword-badge">{k.strip()}</span>' for k in job['keyword'].split(',') if k.strip()])
+        neg_badges = "".join([f'<span class="keyword-badge negative-badge">{k.strip()}</span>' for k in job['negative_keyword'].split(',') if k.strip()])
+        all_badges = pos_badges + neg_badges
+        
+        # We store the comma separated keywords in data-keyword to be parsed by Javascript
+        data_keywords = job['keyword'].lower()
+        if job['negative_keyword']:
+             data_keywords += ", " + job['negative_keyword'].lower()
+             
         jobs_html += f"""
-        <div class="job-card" data-title="{job['title'].lower()}" data-keyword="{job['keyword'].lower()}" data-url="{job['link']}" data-index="{i}">
+        <div class="job-card" data-title="{job['title'].lower()}" data-keyword="{data_keywords}" data-url="{job['link']}" data-index="{i}">
             <h2 class="job-title">{job['title']}</h2>
             <div class="job-meta">
                 <span><strong>Date:</strong> {job['date']}</span> | 
-                <span><strong>Keyword:</strong> <span class="keyword-badge">{job['keyword']}</span></span> | 
+                <span><strong>Keywords:</strong> {all_badges}</span> | 
                 <span><strong>Link:</strong> <a href="{job['link']}" target="_blank">{job['link']}</a></span>
             </div>
             <div class="desc-header">
@@ -239,9 +259,13 @@ def main():
             for i, job in enumerate(jobs):
                 title_disp = truncate(job['title'], 50)
                 
+                
                 # Clear progress bar before printing new match
                 sys.stdout.write("\r" + " " * 100 + "\r")
-                print(f"  -> Match: {job['date']:>12} | {job['keyword']:<15} | {title_disp}")
+                kw_disp = truncate(job['keyword'], 20)
+                if job['negative_keyword']:
+                    kw_disp += f" (Neg: {truncate(job['negative_keyword'], 10)})"
+                print(f"  -> Match: {job['date']:>12} | {kw_disp:<35} | {title_disp}")
                 
                 # Draw progress bar
                 progress = int(50 * (i + 1) / total_jobs) if total_jobs > 0 else 0

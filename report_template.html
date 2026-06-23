@@ -79,6 +79,11 @@
             border-radius: 4px;
             font-size: 0.85em;
             font-weight: bold;
+            margin-right: 4px;
+            display: inline-block;
+        }
+        .negative-badge {
+            background-color: #e74c3c;
         }
         .done-btn {
             background-color: #27ae60;
@@ -203,7 +208,13 @@
         document.addEventListener("DOMContentLoaded", () => {
             const jobCards = Array.from(document.querySelectorAll('.job-card'));
             const keywords = new Set();
-            jobCards.forEach(card => keywords.add(card.getAttribute('data-keyword')));
+            jobCards.forEach(card => {
+                const kws = card.getAttribute('data-keyword').split(',');
+                kws.forEach(kw => {
+                    let k = kw.trim();
+                    if(k) keywords.add(k);
+                });
+            });
             
             const keywordSelect = document.getElementById('keywordFilter');
             Array.from(keywords).sort().forEach(kw => {
@@ -263,11 +274,12 @@
             
             window.jobCards.forEach(card => {
                 const title = card.getAttribute('data-title') || '';
-                const keyword = card.getAttribute('data-keyword') || '';
+                const keywordStr = card.getAttribute('data-keyword') || '';
+                const keywordArr = keywordStr.split(',').map(k => k.trim());
                 const isDone = card.classList.contains('done');
                 
-                const matchesSearch = title.includes(searchText) || keyword.includes(searchText);
-                const matchesKeyword = selectedKeyword === "" || keyword === selectedKeyword;
+                const matchesSearch = title.includes(searchText) || keywordStr.includes(searchText);
+                const matchesKeyword = selectedKeyword === "" || keywordArr.includes(selectedKeyword);
                 
                 let matchesStatus = true;
                 if (selectedStatus === 'done') matchesStatus = isDone;
