@@ -2,10 +2,10 @@ function toggleDescription(elementId, btn) {
     const desc = document.getElementById(elementId);
     if (desc.style.display === 'none' || desc.style.display === '') {
         desc.style.display = 'block';
-        btn.innerText = '▲ Hide Description';
+        btn.innerText = '🔼';
     } else {
         desc.style.display = 'none';
-        btn.innerText = '▼ Show Description';
+        btn.innerText = '🔽';
     }
 }
 
@@ -13,7 +13,7 @@ function copyToClipboard(elementId, btn) {
     const text = document.getElementById(elementId).innerText;
     navigator.clipboard.writeText(text).then(() => {
         const originalText = btn.innerText;
-        btn.innerText = "Copied!";
+        btn.innerText = "✅";
         setTimeout(() => btn.innerText = originalText, 2000);
     }).catch(err => {
         console.error('Failed to copy: ', err);
@@ -26,7 +26,7 @@ function changeStatus(btn, link, newStatus) {
     if (btn.disabled) return;
     
     const originalText = btn.innerText;
-    btn.innerText = "Updating...";
+    btn.innerText = "⏳";
     btn.disabled = true;
     
     fetch('/api/change_status', {
@@ -54,19 +54,23 @@ function changeStatus(btn, link, newStatus) {
             card.className = card.className.replace(/\bstatus-[a-z]+\b/g, '').trim();
             card.classList.add('status-' + newStatus.toLowerCase());
             
-            btn.innerText = newStatus;
+            let emoji = "👀";
+            if (newStatus === "Applied") emoji = "✅";
+            if (newStatus === "Skipped") emoji = "⏭️";
+            btn.innerText = emoji;
+            btn.disabled = false;
+            
             filterJobs(); // update counts and visibility if filtered
         } else {
             alert("Failed to update status.");
             btn.innerText = originalText;
+            btn.disabled = false;
         }
     })
     .catch(error => {
         console.error("Error changing status:", error);
         alert("Failed to update status due to network error.");
         btn.innerText = originalText;
-    })
-    .finally(() => {
         btn.disabled = false;
     });
 }
@@ -76,7 +80,7 @@ function deleteJob(btn, link) {
     
     const card = btn.closest('.job-card');
     btn.disabled = true;
-    btn.innerText = "Deleting...";
+    btn.innerText = "⏳";
     
     fetch('/api/delete_job', {
         method: 'POST',
@@ -96,14 +100,14 @@ function deleteJob(btn, link) {
             filterJobs(); // Update counts
         } else {
             alert("Failed to delete job.");
-            btn.innerText = "🗑️ Delete";
+            btn.innerText = "🗑️";
             btn.disabled = false;
         }
     })
     .catch(error => {
         console.error("Error deleting job:", error);
         alert("Failed to delete job due to network error.");
-        btn.innerText = "🗑️ Delete";
+        btn.innerText = "🗑️";
         btn.disabled = false;
     });
 }
