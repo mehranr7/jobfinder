@@ -16,6 +16,12 @@
         <div style="margin-bottom: 20px; text-align: center;">
             <button class="done-btn" id="runScraperBtn" onclick="runScraper()"
                 style="font-size: 1.1em; padding: 10px 20px;">🚀 Run Scraper</button>
+            <button class="done-btn" id="pauseScraperBtn" onclick="pauseScraper()"
+                style="font-size: 1.1em; padding: 10px 20px; display: none; background-color: #f39c12;">⏸ Pause</button>
+            <button class="done-btn" id="resumeScraperBtn" onclick="resumeScraper()"
+                style="font-size: 1.1em; padding: 10px 20px; display: none; background-color: #27ae60;">▶ Resume</button>
+            <button class="clear-btn" id="stopScraperBtn" onclick="stopScraper()"
+                style="font-size: 1.1em; padding: 10px 20px; display: none; background-color: #e74c3c; color: white;">⏹ Stop</button>
         </div>
 
         <div id="terminalContainer"

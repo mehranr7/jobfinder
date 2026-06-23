@@ -215,22 +215,39 @@ function sortJobs() {
 
 function runScraper() {
     const btn = document.getElementById('runScraperBtn');
+    const pauseBtn = document.getElementById('pauseScraperBtn');
+    const resumeBtn = document.getElementById('resumeScraperBtn');
+    const stopBtn = document.getElementById('stopScraperBtn');
+    
     const term = document.getElementById('terminalContainer');
     const termOut = document.getElementById('terminalOutput');
     const termWrapper = document.getElementById('terminalOutputWrapper');
 
     btn.disabled = true;
     btn.innerText = "Running...";
+    btn.style.display = 'none'; // hide run button
+    pauseBtn.style.display = 'inline-block';
+    resumeBtn.style.display = 'none';
+    stopBtn.style.display = 'inline-block';
+    
     term.style.display = 'block';
     termOut.innerHTML = 'Starting scraper...\n';
 
     const source = new EventSource('/api/run_scraper');
 
+    function resetButtons() {
+        btn.disabled = false;
+        btn.innerText = "🚀 Run Scraper";
+        btn.style.display = 'inline-block';
+        pauseBtn.style.display = 'none';
+        resumeBtn.style.display = 'none';
+        stopBtn.style.display = 'none';
+    }
+
     source.onmessage = function (event) {
         if (event.data === "DONE") {
             source.close();
-            btn.disabled = false;
-            btn.innerText = "🚀 Run Scraper";
+            resetButtons();
             termOut.innerHTML += '\nScraper finished.\n';
         } else {
             termOut.innerHTML += event.data + '\n';
@@ -245,10 +262,34 @@ function runScraper() {
 
     source.onerror = function (event) {
         source.close();
-        btn.disabled = false;
-        btn.innerText = "🚀 Run Scraper";
+        resetButtons();
         termOut.innerHTML += '\nError connecting to scraper stream.\n';
     };
+}
+
+function pauseScraper() {
+    fetch('/api/pause_scraper', { method: 'POST' })
+        .then(() => {
+            document.getElementById('pauseScraperBtn').style.display = 'none';
+            document.getElementById('resumeScraperBtn').style.display = 'inline-block';
+        });
+}
+
+function resumeScraper() {
+    fetch('/api/resume_scraper', { method: 'POST' })
+        .then(() => {
+            document.getElementById('resumeScraperBtn').style.display = 'none';
+            document.getElementById('pauseScraperBtn').style.display = 'inline-block';
+        });
+}
+
+function stopScraper() {
+    fetch('/api/stop_scraper', { method: 'POST' })
+        .then(() => {
+            document.getElementById('pauseScraperBtn').style.display = 'none';
+            document.getElementById('resumeScraperBtn').style.display = 'none';
+            // Stop button can stay visible until the stream formally closes
+        });
 }
 
 function fetchLatestJobs() {

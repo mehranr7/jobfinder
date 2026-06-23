@@ -70,6 +70,21 @@ def run_scraper():
         
     return Response(generate(), mimetype='text/event-stream')
 
+@app.route('/api/pause_scraper', methods=['POST'])
+def pause_scraper():
+    scraper.current_state = scraper.STATE_PAUSED
+    return jsonify({"success": True})
+
+@app.route('/api/resume_scraper', methods=['POST'])
+def resume_scraper():
+    scraper.current_state = scraper.STATE_RUNNING
+    return jsonify({"success": True})
+
+@app.route('/api/stop_scraper', methods=['POST'])
+def stop_scraper():
+    scraper.current_state = scraper.STATE_STOPPED
+    return jsonify({"success": True})
+
 if __name__ == '__main__':
     # Initialize DB on startup
     database.init_db()
