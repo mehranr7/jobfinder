@@ -132,9 +132,7 @@ function filterJobs() {
     const statusSelect = document.getElementById('statusFilter');
     const statusFilter = statusSelect ? statusSelect.value : "";
     
-    let visibleCount = 0;
-    
-    window.jobCards.forEach(card => {
+    window.filteredCards = window.jobCards.filter(card => {
         const title = card.getAttribute('data-title');
         const kws = card.getAttribute('data-keyword').toLowerCase();
         const status = card.getAttribute('data-status') || "Unseen";
@@ -146,7 +144,6 @@ function filterJobs() {
         
         let matchesText = title.includes(textFilter) || kws.includes(textFilter);
         let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => posKwsList.includes(kw));
-        // Show jobs that HAVE at least one of the selected negative keywords
         let matchesNegKeyword = selectedNegKws.length === 0 || selectedNegKws.some(kw => negKwsList.includes(kw));
         let matchesDescTag = selectedDescTags.length === 0 || selectedDescTags.some(tag => descTagsList.includes(tag));
         let matchesNegDescTag = selectedNegDescTags.length === 0 || selectedNegDescTags.some(tag => negDescTagsList.includes(tag));
@@ -156,69 +153,18 @@ function filterJobs() {
             matchesStatus = (status === statusFilter);
         }
         
-        if (matchesText && matchesKeyword && matchesNegKeyword && matchesDescTag && matchesNegDescTag && matchesStatus) {
-            card.style.display = 'block';
-            visibleCount++;
-        } else {
-            card.style.display = 'none';
-        }
+        return matchesText && matchesKeyword && matchesNegKeyword && matchesDescTag && matchesNegDescTag && matchesStatus;
     });
     
-    document.getElementById('jobCountDisplay').innerText = `Total Offers: ${visibleCount}`;
+    applySortAndRender(true);
 }
 
-function clearSearch() {
-    document.getElementById('searchInput').value = '';
-    filterJobs();
-}
-
-function clearKeyword() {
-    document.querySelectorAll('.kw-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function clearNegativeKeyword() {
-    document.querySelectorAll('.neg-kw-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function clearDescTag() {
-    document.querySelectorAll('.desc-tag-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function clearNegDescTag() {
-    document.querySelectorAll('.neg-desc-tag-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function toggleDropdown(id) {
-    const el = document.getElementById(id);
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-// Close dropdowns when clicking outside
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.multi-select')) {
-        document.querySelectorAll('.dropdown-content').forEach(d => d.style.display = 'none');
-    }
-});
-
-function clearStatus() {
-    document.getElementById('statusFilter').value = '';
-    filterJobs();
-}
-
-function sortJobs() {
+function applySortAndRender(resetPagination) {
     const sortSelect = document.getElementById('sortSelect');
-    if(!sortSelect) return;
-    const sortValue = sortSelect.value;
-    const container = document.querySelector('.jobs-container');
-    
-    let sortedCards = [...window.jobCards];
+    const sortValue = sortSelect ? sortSelect.value : "date-desc";
     
     if (sortValue === "date-asc") {
-        sortedCards.sort((a, b) => {
+        window.filteredCards.sort((a, b) => {
             const da = new Date(a.getAttribute('data-date')).getTime();
             const db = new Date(b.getAttribute('data-date')).getTime();
             if (isNaN(da) && isNaN(db)) return 0;
@@ -227,7 +173,7 @@ function sortJobs() {
             return da - db;
         });
     } else if (sortValue === "date-desc") {
-        sortedCards.sort((a, b) => {
+        window.filteredCards.sort((a, b) => {
             const da = new Date(a.getAttribute('data-date')).getTime();
             const db = new Date(b.getAttribute('data-date')).getTime();
             if (isNaN(da) && isNaN(db)) return 0;
@@ -236,14 +182,56 @@ function sortJobs() {
             return db - da;
         });
     } else if (sortValue === "title-asc") {
-        sortedCards.sort((a, b) => a.getAttribute('data-title').localeCompare(b.getAttribute('data-title')));
+        window.filteredCards.sort((a, b) => a.getAttribute('data-title').localeCompare(b.getAttribute('data-title')));
     } else if (sortValue === "title-desc") {
-        sortedCards.sort((a, b) => b.getAttribute('data-title').localeCompare(a.getAttribute('data-title')));
+        window.filteredCards.sort((a, b) => b.getAttribute('data-title').localeCompare(a.getAttribute('data-title')));
     } else if (sortValue === "keyword-asc") {
-        sortedCards.sort((a, b) => a.getAttribute('data-keyword').localeCompare(b.getAttribute('data-keyword')));
+        window.filteredCards.sort((a, b) => a.getAttribute('data-keyword').localeCompare(b.getAttribute('data-keyword')));
     }
     
-    sortedCards.forEach(card => container.appendChild(card));
+    if (resetPagination) {
+        window.currentVisibleCount = window.PAGE_SIZE || 20;
+    }
+    renderCards();
+}
+
+function renderCards() {
+    const container = document.querySelector('.jobs-container');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const countDisplay = document.getElementById('jobCountDisplay');
+    
+    // Hide all initially
+    window.jobCards.forEach(card => card.style.display = 'none');
+    
+    // Show only the visible slice
+    const visibleCards = window.filteredCards.slice(0, window.currentVisibleCount);
+    
+    visibleCards.forEach(card => {
+        container.appendChild(card); // guarantees DOM order matches sort
+        card.style.display = 'block';
+    });
+    
+    // Update Load More button
+    if (window.filteredCards.length > window.currentVisibleCount) {
+        if (loadMoreBtn) loadMoreBtn.style.display = 'inline-block';
+    } else {
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+    }
+    
+    // Update counter
+    const showing = Math.min(window.currentVisibleCount, window.filteredCards.length);
+    if (countDisplay) {
+        countDisplay.innerText = `Showing ${showing} of ${window.filteredCards.length} Offers`;
+    }
+}
+
+function loadMoreJobs() {
+    window.currentVisibleCount += (window.PAGE_SIZE || 20);
+    renderCards();
+}
+
+function sortJobs() {
+    applySortAndRender(true);
 }
 
 function runScraper() {
@@ -472,9 +460,11 @@ function populateDropdowns() {
 document.addEventListener('DOMContentLoaded', () => {
     window.jobCards = Array.from(document.querySelectorAll('.job-card'));
     window.originalJobCards = [...window.jobCards];
+    window.filteredCards = [...window.jobCards];
+    window.currentVisibleCount = window.PAGE_SIZE || 20;
     
     populateDropdowns();
     
-    filterJobs(); // Initial count
-    sortJobs();   // Initial sort based on default value
+    // Initial filter, sort, and render
+    filterJobs();
 });

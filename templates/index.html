@@ -119,8 +119,15 @@
             {% include 'job_card.html' %}
             {% endfor %}
         </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="loadMoreBtn" class="action-btn" onclick="loadMoreJobs()" style="display: none; padding: 10px 20px; font-size: 16px;">Load More</button>
+        </div>
 
     </div>
+    <script>
+        window.PAGE_SIZE = {{ page_size|default(20) }};
+    </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 

@@ -1,13 +1,14 @@
-port: 5050
+port: 4567
+page_size: 20
 delay_min_ms: 1000
 delay_max_ms: 1500
 special_keyword_threshold: 3
 
 stellenwerk_link: "https://www.stellenwerk.de/hamburg"
-stellenwerk_pages: 6
+stellenwerk_pages: 4
 
 stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-stepstone_pages: 5
+stepstone_pages: 2
 keywords:
   - "Werkstudent"
   - "Studierende"
@@ -145,3 +146,11 @@ negative_keywords:
   - "Bauprojekte"
   - "mehrjähriger Erfahrung"
   - "years of experience"
+  - "Kundenanfragen"
+  - "Kundenservice"
+  - " Telefon"
+  - "Bautechnik"
+  - "Bauingenieurwesen"
+  - "Architektur"
+  - "Auditor"
+  - "TGA"

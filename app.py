@@ -27,7 +27,13 @@ def timeago_filter(dt_string):
 def index():
     jobs = database.get_all_jobs()
     threshold = get_special_threshold()
-    return render_template('index.html', jobs=jobs, special_threshold=threshold)
+    try:
+        with open("config.yml", "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        page_size = config.get("page_size", 20)
+    except Exception:
+        page_size = 20
+    return render_template('index.html', jobs=jobs, special_threshold=threshold, page_size=page_size)
 
 @app.route('/api/get_job_cards')
 def get_job_cards():
