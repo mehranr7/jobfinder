@@ -1,32 +1,11 @@
 delay_min_ms: 1000
 delay_max_ms: 1500
 
-target_urls:
-  - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=0"
-  # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=10"
-  # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=20"
-  # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=30"
-  # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=40"
-  # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=50"
-  # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=60"
-  # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=70"
-  # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=80"
-  # - "https://www.stellenwerk.de/hamburg?pagination%5Bstart%5D=90"
-  - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=2&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=3&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=4&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=5&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=6&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=7&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=8&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=9&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=10&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=11&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=12&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=13&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=14&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-  # - "https://www.stepstone.de/jobs/teilzeit/in-hamburg?page=15&action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
+stellenwerk_link: "https://www.stellenwerk.de/hamburg"
+stellenwerk_pages: 2
+
+stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
+stepstone_pages: 2
 keywords:
   - "Werkstudent"
   - "Working Student"

@@ -15,7 +15,32 @@ sys.stdout.reconfigure(encoding='utf-8')
 with open("config.yml", "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
-TARGET_URLS = config.get("target_urls", [])
+STELLENWERK_LINK = config.get("stellenwerk_link", "")
+STELLENWERK_PAGES = config.get("stellenwerk_pages", 1)
+
+STEPSTONE_LINK = config.get("stepstone_link", "")
+STEPSTONE_PAGES = config.get("stepstone_pages", 1)
+
+def get_target_urls():
+    urls = []
+    if STELLENWERK_LINK:
+        sep = "&" if "?" in STELLENWERK_LINK else "?"
+        for i in range(STELLENWERK_PAGES):
+            offset = i * 10
+            urls.append(f"{STELLENWERK_LINK}{sep}pagination%5Bstart%5D={offset}")
+            
+    if STEPSTONE_LINK:
+        urls.append(STEPSTONE_LINK)
+        for i in range(2, STEPSTONE_PAGES + 1):
+            if "?" in STEPSTONE_LINK:
+                parts = STEPSTONE_LINK.split("?", 1)
+                urls.append(f"{parts[0]}?page={i}&{parts[1]}")
+            else:
+                urls.append(f"{STEPSTONE_LINK}?page={i}")
+                
+    return urls
+
+TARGET_URLS = get_target_urls()
 KEYWORDS = config.get("keywords", [])
 NEGATIVE_KEYWORDS = config.get("negative_keywords", [])
 DELAY_MIN_MS = config.get("delay_min_ms", 1500)
