@@ -75,3 +75,10 @@ def update_job_status(link, is_done):
     c.execute('UPDATE jobs SET is_done = ? WHERE link = ?', (is_done, link))
     conn.commit()
     conn.close()
+
+def delete_job(link):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('DELETE FROM jobs WHERE link = ?', (link,))
+    conn.commit()
+    conn.close()

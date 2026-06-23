@@ -230,6 +230,7 @@
                     <button class="done-btn" onclick="toggleDone(this, '{{ job.link }}')">
                         {% if job.is_done %}Undo Done{% else %}✓ Mark as Done{% endif %}
                     </button>
+                    <button class="clear-btn" onclick="deleteJob(this, '{{ job.link }}')" style="margin-right: 10px; padding: 5px 10px;">🗑️ Delete</button>
                     <button class="copy-btn" onclick="copyToClipboard('desc-{{ loop.index }}', this)">Copy</button>
                 </div>
             </div>
@@ -291,6 +292,43 @@
                 btn.innerText = isCurrentlyDone ? "Undo Done" : "✓ Mark as Done";
             })
             .finally(() => {
+                btn.disabled = false;
+            });
+        }
+
+        function deleteJob(btn, link) {
+            if(!confirm("Are you sure you want to permanently delete this job offer? (Note: If it's still live on the website, it might be scraped again next time.)")) return;
+            
+            const card = btn.closest('.job-card');
+            btn.disabled = true;
+            btn.innerText = "Deleting...";
+            
+            fetch('/api/delete_job', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    link: link
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    card.remove();
+                    // Update global array so filters keep working correctly
+                    window.jobCards = window.jobCards.filter(c => c !== card);
+                    filterJobs(); // Update counts
+                } else {
+                    alert("Failed to delete job.");
+                    btn.innerText = "🗑️ Delete";
+                    btn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error("Error deleting job:", error);
+                alert("Failed to delete job due to network error.");
+                btn.innerText = "🗑️ Delete";
                 btn.disabled = false;
             });
         }

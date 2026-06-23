@@ -62,6 +62,17 @@ def toggle_done():
     database.update_job_status(link, bool(is_done))
     return jsonify({'success': True, 'link': link, 'is_done': bool(is_done)})
 
+@app.route('/api/delete_job', methods=['POST'])
+def delete_job():
+    data = request.get_json()
+    link = data.get('link')
+    
+    if not link:
+        return jsonify({'error': 'Missing link'}), 400
+        
+    database.delete_job(link)
+    return jsonify({'success': True, 'link': link})
+
 @app.route('/api/run_scraper')
 def run_scraper():
     def generate():
@@ -73,8 +84,9 @@ def run_scraper():
             try:
                 # Wait for up to 1 second for a new message
                 msg = q.get(timeout=1.0)
-                # Replace newlines with <br> for HTML rendering, or just send plain text
-                # We will send plain text and let the frontend format it
+                # Print to terminal so it's visible in docker logs
+                print(msg, flush=True)
+                # Replace newlines with <br> for HTML rendering
                 formatted_msg = msg.replace('\n', '<br>')
                 yield f"data: {formatted_msg}\n\n"
             except queue.Empty:
