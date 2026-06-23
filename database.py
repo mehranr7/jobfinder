@@ -25,6 +25,7 @@ def init_db():
             description_tags TEXT,
             neg_description_tags TEXT,
             is_done BOOLEAN DEFAULT 0,
+            status TEXT DEFAULT 'Unseen',
             discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -37,6 +38,15 @@ def init_db():
         c.execute('ALTER TABLE jobs ADD COLUMN neg_description_tags TEXT DEFAULT ""')
     except sqlite3.OperationalError:
         pass # Column already exists
+
+    try:
+        c.execute('ALTER TABLE jobs ADD COLUMN status TEXT DEFAULT "Unseen"')
+        # Run one-time migration for existing data
+        c.execute("UPDATE jobs SET status = 'Applied' WHERE is_done = 1 AND status = 'Unseen'")
+        c.execute("UPDATE jobs SET status = 'Unseen' WHERE is_done = 0 AND status = 'Unseen'")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
     conn.commit()
     conn.close()
 
@@ -53,7 +63,7 @@ def insert_job(job_dict):
     c = conn.cursor()
     try:
         c.execute('''
-            INSERT INTO jobs (link, title, company, date_of_release, keywords, negative_keywords, description, description_tags, neg_description_tags, is_done)
+            INSERT INTO jobs (link, title, company, date_of_release, keywords, negative_keywords, description, description_tags, neg_description_tags, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             job_dict.get('link'),
@@ -65,7 +75,7 @@ def insert_job(job_dict):
             job_dict.get('description', ''),
             job_dict.get('description_tags', ''),
             job_dict.get('neg_description_tags', ''),
-            False
+            'Unseen'
         ))
         conn.commit()
     except sqlite3.IntegrityError:
@@ -82,10 +92,10 @@ def get_all_jobs():
     # Convert sqlite3.Row objects to dicts
     return [dict(row) for row in rows]
 
-def update_job_status(link, is_done):
+def update_job_status(link, status):
     conn = get_connection()
     c = conn.cursor()
-    c.execute('UPDATE jobs SET is_done = ? WHERE link = ?', (is_done, link))
+    c.execute('UPDATE jobs SET status = ? WHERE link = ?', (status, link))
     conn.commit()
     conn.close()
 

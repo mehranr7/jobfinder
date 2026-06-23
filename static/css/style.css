@@ -68,9 +68,15 @@ h1 {
     box-shadow: 0 8px 30px rgba(245, 158, 11, 0.3);
 }
 
-.job-card.done {
-    opacity: 0.4;
-    filter: grayscale(100%);
+.job-card.status-applied {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.05);
+    box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.1);
+}
+
+.job-card.status-skipped {
+    opacity: 0.5;
+    filter: grayscale(80%);
 }
 
 .job-title {
@@ -161,13 +167,42 @@ button {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-.done-btn {
-    background-color: var(--success);
+.status-btn-group {
+    display: inline-flex;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.status-btn {
+    background: transparent;
+    color: var(--text-muted);
+    box-shadow: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.85em;
+    margin: 0;
+    transition: all 0.2s;
+}
+
+.status-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+}
+
+.status-btn.active.btn-unseen {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--text-main);
+}
+
+.status-btn.active.btn-applied {
+    background: var(--success);
     color: white;
 }
 
-.done-btn:hover {
-    background-color: var(--success-hover);
+.status-btn.active.btn-skipped {
+    background: var(--danger);
+    color: white;
 }
 
 .clear-btn {

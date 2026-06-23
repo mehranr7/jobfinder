@@ -35,17 +35,17 @@ def get_job_cards():
     threshold = get_special_threshold()
     return render_template('job_cards.html', jobs=jobs, special_threshold=threshold)
 
-@app.route('/api/toggle_done', methods=['POST'])
-def toggle_done():
+@app.route('/api/change_status', methods=['POST'])
+def change_status():
     data = request.get_json()
     link = data.get('link')
-    is_done = data.get('is_done')
+    status = data.get('status')
     
-    if link is None or is_done is None:
-        return jsonify({'error': 'Missing link or is_done'}), 400
+    if link is None or status is None:
+        return jsonify({'error': 'Missing link or status'}), 400
         
-    database.update_job_status(link, bool(is_done))
-    return jsonify({'success': True, 'link': link, 'is_done': bool(is_done)})
+    database.update_job_status(link, status)
+    return jsonify({'success': True, 'link': link, 'status': status})
 
 @app.route('/api/delete_job', methods=['POST'])
 def delete_job():

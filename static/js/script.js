@@ -20,44 +20,51 @@ function copyToClipboard(elementId, btn) {
     });
 }
 
-function toggleDone(btn, link) {
+function changeStatus(btn, link, newStatus) {
     const card = btn.closest('.job-card');
-    const isCurrentlyDone = card.classList.contains('done');
-    const newStatus = !isCurrentlyDone;
     
-    btn.disabled = true;
+    if (btn.disabled) return;
+    
+    const originalText = btn.innerText;
     btn.innerText = "Updating...";
+    btn.disabled = true;
     
-    fetch('/api/toggle_done', {
+    fetch('/api/change_status', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
             link: link,
-            is_done: newStatus
+            status: newStatus
         })
     })
     .then(response => response.json())
     .then(data => {
         if(data.success) {
-            if(newStatus) {
-                card.classList.add('done');
-                btn.innerText = "Undo Done";
-            } else {
-                card.classList.remove('done');
-                btn.innerText = "✓ Mark as Done";
+            // Update UI
+            const group = btn.closest('.status-btn-group');
+            if (group) {
+                group.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
             }
+            btn.classList.add('active');
+            
+            card.setAttribute('data-status', newStatus);
+            // remove old status classes
+            card.className = card.className.replace(/\bstatus-[a-z]+\b/g, '').trim();
+            card.classList.add('status-' + newStatus.toLowerCase());
+            
+            btn.innerText = newStatus;
             filterJobs(); // update counts and visibility if filtered
         } else {
             alert("Failed to update status.");
-            btn.innerText = isCurrentlyDone ? "Undo Done" : "✓ Mark as Done";
+            btn.innerText = originalText;
         }
     })
     .catch(error => {
-        console.error("Error toggling done status:", error);
+        console.error("Error changing status:", error);
         alert("Failed to update status due to network error.");
-        btn.innerText = isCurrentlyDone ? "Undo Done" : "✓ Mark as Done";
+        btn.innerText = originalText;
     })
     .finally(() => {
         btn.disabled = false;
@@ -130,7 +137,7 @@ function filterJobs() {
     window.jobCards.forEach(card => {
         const title = card.getAttribute('data-title');
         const kws = card.getAttribute('data-keyword').toLowerCase();
-        const isDone = card.classList.contains('done');
+        const status = card.getAttribute('data-status') || "Unseen";
         
         const posKwsList = card.getAttribute('data-pos-keyword').split(',').map(s => s.trim());
         const negKwsList = card.getAttribute('data-neg-keyword').split(',').map(s => s.trim());
@@ -145,8 +152,9 @@ function filterJobs() {
         let matchesNegDescTag = selectedNegDescTags.length === 0 || selectedNegDescTags.some(tag => negDescTagsList.includes(tag));
         
         let matchesStatus = true;
-        if (statusFilter === 'done') matchesStatus = isDone;
-        if (statusFilter === 'undone') matchesStatus = !isDone;
+        if (statusFilter && statusFilter !== "") {
+            matchesStatus = (status === statusFilter);
+        }
         
         if (matchesText && matchesKeyword && matchesNegKeyword && matchesDescTag && matchesNegDescTag && matchesStatus) {
             card.style.display = 'block';
