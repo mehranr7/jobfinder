@@ -60,6 +60,7 @@
 
         <div class="jobs-container">
         {% for job in jobs %}
+            {% set loop_index = loop.index %}
             {% include 'job_card.html' %}
         {% endfor %}
     </div>

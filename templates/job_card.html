@@ -20,13 +20,13 @@
     </div>
 
     <div class="desc-header">
-        <button class="toggle-desc-btn" onclick="toggleDescription('desc-{{ loop.index }}', this)">▼ Show
+        <button class="toggle-desc-btn" onclick="toggleDescription('desc-{{ loop_index }}', this)">▼ Show
             Description</button>
         <button class="clear-btn" onclick="deleteJob(this, '{{ job.link }}')">🗑️ Delete</button>
         <button class="done-btn" onclick="toggleDone(this, '{{ job.link }}')">
             {% if job.is_done %}Undo Done{% else %}✓ Mark as Done{% endif %}
         </button>
-        <button class="copy-btn" onclick="copyToClipboard('desc-{{ loop.index }}', this)">Copy</button>
+        <button class="copy-btn" onclick="copyToClipboard('desc-{{ loop_index }}', this)">Copy</button>
     </div>
-    <div class="job-description" id="desc-{{ loop.index }}">{{ job.description | safe }}</div>
+    <div class="job-description" id="desc-{{ loop_index }}">{{ job.description | safe }}</div>
 </div>
