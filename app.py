@@ -97,14 +97,23 @@ def stop_scraper():
     scraper.current_state = scraper.STATE_STOPPED
     return jsonify({"success": True})
 
+def get_port():
+    try:
+        with open("config.yml", "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        return config.get("port", 5050)
+    except Exception:
+        return 5050
+
 if __name__ == '__main__':
     # Initialize DB on startup
     database.init_db()
     
+    port = get_port()
     print("\n" + "="*50)
     print("🚀 JOBFINDER SERVER IS RUNNING!")
-    print("👉 CLICK HERE TO OPEN: http://localhost:5000")
+    print(f"👉 CLICK HERE TO OPEN: http://localhost:{port}")
     print("="*50 + "\n")
     
     # Run the app, accessible externally for Docker (binds to both IPv4 and IPv6)
-    app.run(host='::', port=5050, debug=False)
+    app.run(host='::', port=port, debug=False)
