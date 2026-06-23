@@ -81,63 +81,7 @@ def scrape_stellenwerk(page, url):
             })
     return jobs
 
-def scrape_indeed(page, url):
-    """
-    Scrapes job offers from an Indeed URL using Playwright.
-    Handles the specific DOM structure of Indeed's job cards.
-    """
-    jobs = []
-    page.goto(url)
-    
-    try:
-        page.wait_for_selector(".jobsearch-ResultsList", timeout=15000)
-    except:
-        print("  [!] Timeout / Blocked")
-        return jobs
 
-    html = page.content()
-    soup = BeautifulSoup(html, 'html.parser')
-    
-    cards = soup.find_all("div", class_=re.compile("job_seen_beacon"))
-    if not cards:
-        cards = soup.find_all("td", class_="resultContent")
-        
-    for card in cards:
-        title_tag = card.find(["h2", "span"], title=True)
-        if not title_tag:
-            title_tag = card.find("h2", class_=re.compile("jobTitle"))
-            
-        title = title_tag.get_text(strip=True) if title_tag else "Unknown Title"
-        
-        a_tag = card.find("a", href=True)
-        if not a_tag:
-            a_tag = card.find_parent("a", href=True)
-            
-        if not a_tag:
-            continue
-            
-        job_link = urljoin(url, a_tag["href"])
-        
-        date_tag = card.find("span", class_=re.compile("date"))
-        date = date_tag.get_text(strip=True) if date_tag else "Unknown"
-        date = date.replace("Posted", "").strip()
-        
-        card_text = card.get_text(separator=' ', strip=True)
-        
-        matched_keyword = None
-        for kw in KEYWORDS:
-            if re.search(r'\b' + re.escape(kw) + r'\b', card_text, re.IGNORECASE):
-                matched_keyword = kw
-                break
-                
-        if matched_keyword:
-            jobs.append({
-                "title": title,
-                "date": date,
-                "link": job_link,
-                "keyword": matched_keyword
-            })
-    return jobs
 
 def scrape_stepstone(page, url):
     """
@@ -274,8 +218,6 @@ def main():
             
             if "stellenwerk" in url:
                 domain_name = "Stellenwerk"
-            elif "indeed" in url:
-                domain_name = "Indeed"
             elif "stepstone" in url:
                 domain_name = "Stepstone"
             else:
@@ -287,17 +229,26 @@ def main():
 
             if "stellenwerk" in url:
                 jobs = scrape_stellenwerk(page, url)
-            elif "indeed" in url:
-                jobs = scrape_indeed(page, url)
             elif "stepstone" in url:
                 jobs = scrape_stepstone(page, url)
             else:
                 print(f"Unknown domain for URL: {url}")
                 continue
                 
-            for job in jobs:
+            total_jobs = len(jobs)
+            for i, job in enumerate(jobs):
                 title_disp = truncate(job['title'], 50)
+                
+                # Clear progress bar before printing new match
+                sys.stdout.write("\r" + " " * 100 + "\r")
                 print(f"  -> Match: {job['date']:>12} | {job['keyword']:<15} | {title_disp}")
+                
+                # Draw progress bar
+                progress = int(50 * (i + 1) / total_jobs) if total_jobs > 0 else 0
+                bar = "█" * progress + "-" * (50 - progress)
+                sys.stdout.write(f"\r  -> Progress: [{bar}] {i+1}/{total_jobs}")
+                sys.stdout.flush()
+                
                 # Deep Scrape
                 try:
                     page.goto(job['link'], timeout=15000)
@@ -314,6 +265,10 @@ def main():
                 
                 # Slight delay between deep scrapes to avoid getting blocked
                 page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
+                
+            if total_jobs > 0:
+                sys.stdout.write("\r" + " " * 100 + "\r")
+                print(f"  -> Completed deep scraping {total_jobs} jobs.")
                 
             # Slight delay between domain pages
             page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
