@@ -86,6 +86,13 @@ def run_scraper():
     return Response(generate(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
+    # Initialize DB on startup
     database.init_db()
-    print("Starting JobFinder UI. Open http://localhost:5000 in your browser.")
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    
+    print("\n" + "="*50)
+    print("🚀 JOBFINDER SERVER IS RUNNING!")
+    print("👉 CLICK HERE TO OPEN: http://localhost:5000")
+    print("="*50 + "\n")
+    
+    # Run the app, accessible externally for Docker
+    app.run(host='0.0.0.0', port=5000, debug=False)
