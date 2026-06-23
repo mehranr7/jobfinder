@@ -124,10 +124,13 @@ function filterJobs() {
         const kws = card.getAttribute('data-keyword').toLowerCase();
         const isDone = card.classList.contains('done');
         
+        const posKwsList = card.getAttribute('data-pos-keyword').split(',').map(s => s.trim());
+        const negKwsList = card.getAttribute('data-neg-keyword').split(',').map(s => s.trim());
+        
         let matchesText = title.includes(textFilter) || kws.includes(textFilter);
-        let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => kws.includes(kw));
+        let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => posKwsList.includes(kw));
         // If negative keywords are selected, show jobs that DO NOT have ANY of the selected negative keywords
-        let matchesNegKeyword = selectedNegKws.length === 0 || !selectedNegKws.some(kw => kws.includes(kw));
+        let matchesNegKeyword = selectedNegKws.length === 0 || !selectedNegKws.some(kw => negKwsList.includes(kw));
         
         let matchesStatus = true;
         if (statusFilter === 'done') matchesStatus = isDone;

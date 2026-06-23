@@ -3,7 +3,7 @@
 {% set data_kws = ((job.keywords or '') ~ " " ~ (job.negative_keywords or ''))|lower %}
 
 <div class="job-card {% if job.is_done %}done{% endif %}" data-title="{{ job.title|lower }}"
-    data-keyword="{{ data_kws }}" data-url="{{ job.link }}" data-date="{{ job.date_of_release }}">
+    data-keyword="{{ data_kws }}" data-pos-keyword="{{ pos_kws|join(',')|lower }}" data-neg-keyword="{{ neg_kws|join(',')|lower }}" data-url="{{ job.link }}" data-date="{{ job.date_of_release }}">
     <h2 class="job-title">{{ job.title }}</h2>
     <div class="job-meta">
         <span class="meta-item">🏢 <strong>{{ job.company }}</strong></span>
