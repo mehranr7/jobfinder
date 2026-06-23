@@ -170,9 +170,9 @@ function sortJobs() {
     let sortedCards = [...window.jobCards];
     
     if (sortValue === "date-asc") {
-        sortedCards = [...window.originalJobCards];
+        sortedCards.sort((a, b) => new Date(a.getAttribute('data-date')) - new Date(b.getAttribute('data-date')));
     } else if (sortValue === "date-desc") {
-        sortedCards = [...window.originalJobCards].reverse();
+        sortedCards.sort((a, b) => new Date(b.getAttribute('data-date')) - new Date(a.getAttribute('data-date')));
     } else if (sortValue === "title-asc") {
         sortedCards.sort((a, b) => a.getAttribute('data-title').localeCompare(b.getAttribute('data-title')));
     } else if (sortValue === "title-desc") {
@@ -187,6 +187,52 @@ function sortJobs() {
 function clearSort() {
     document.getElementById('sortSelect').value = 'date-asc';
     sortJobs();
+}
+
+function runScraper() {
+    const btn = document.getElementById('runScraperBtn');
+    const term = document.getElementById('terminalContainer');
+    const termOut = document.getElementById('terminalOutput');
+    const termWrapper = document.getElementById('terminalOutputWrapper');
+
+    btn.disabled = true;
+    btn.innerText = "Running...";
+    term.style.display = 'block';
+    termOut.innerHTML = 'Starting scraper...\n';
+
+    const source = new EventSource('/api/run_scraper');
+
+    source.onmessage = function (event) {
+        if (event.data === "DONE") {
+            source.close();
+            btn.disabled = false;
+            btn.innerText = "🚀 Run Scraper";
+            termOut.innerHTML += '\nScraper finished.\n';
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            termOut.innerHTML += event.data + '\n';
+            termWrapper.scrollTop = termWrapper.scrollHeight;
+        }
+    };
+
+    source.onerror = function (event) {
+        source.close();
+        btn.disabled = false;
+        btn.innerText = "🚀 Run Scraper";
+        termOut.innerHTML += '\nError connecting to scraper stream.\n';
+    };
+}
+
+function toggleTerminal() {
+    const wrapper = document.getElementById('terminalOutputWrapper');
+    const btn = document.getElementById('terminalToggleBtn');
+    if (wrapper.style.display === 'none') {
+        wrapper.style.display = 'block';
+        btn.innerText = '▼';
+    } else {
+        wrapper.style.display = 'none';
+        btn.innerText = '▲';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
