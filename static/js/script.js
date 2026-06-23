@@ -219,12 +219,16 @@ function runScraper() {
         if (event.data === "DONE") {
             source.close();
             btn.disabled = false;
-            btn.innerText = "🔄 Refresh to see new jobs";
-            btn.onclick = () => location.reload();
-            termOut.innerHTML += '\nScraper finished. Please refresh the page to see new jobs.\n';
+            btn.innerText = "🚀 Run Scraper";
+            termOut.innerHTML += '\nScraper finished.\n';
         } else {
             termOut.innerHTML += event.data + '\n';
             termWrapper.scrollTop = termWrapper.scrollHeight;
+            
+            // If a new job was matched, fetch the updated job list and total count
+            if (event.data.includes("NEW Match")) {
+                fetchLatestJobs();
+            }
         }
     };
 
@@ -234,6 +238,25 @@ function runScraper() {
         btn.innerText = "🚀 Run Scraper";
         termOut.innerHTML += '\nError connecting to scraper stream.\n';
     };
+}
+
+function fetchLatestJobs() {
+    fetch('/api/get_job_cards')
+        .then(response => response.text())
+        .then(html => {
+            const container = document.querySelector('.jobs-container');
+            container.innerHTML = html;
+            
+            // Re-initialize jobCards list so filters keep working
+            window.jobCards = Array.from(document.querySelectorAll('.job-card'));
+            
+            // Re-apply filters and sorting
+            filterJobs();
+            sortJobs();
+            
+            // Update total job count (which is handled in filterJobs, but just to be sure)
+        })
+        .catch(err => console.error("Error fetching latest jobs:", err));
 }
 
 function toggleTerminal() {

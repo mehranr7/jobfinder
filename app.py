@@ -18,6 +18,11 @@ def index():
     jobs = database.get_all_jobs()
     return render_template('index.html', jobs=jobs)
 
+@app.route('/api/get_job_cards')
+def get_job_cards():
+    jobs = database.get_all_jobs()
+    return render_template('job_cards.html', jobs=jobs)
+
 @app.route('/api/toggle_done', methods=['POST'])
 def toggle_done():
     data = request.get_json()
