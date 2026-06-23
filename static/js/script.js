@@ -129,8 +129,8 @@ function filterJobs() {
         
         let matchesText = title.includes(textFilter) || kws.includes(textFilter);
         let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => posKwsList.includes(kw));
-        // If negative keywords are selected, show jobs that DO NOT have ANY of the selected negative keywords
-        let matchesNegKeyword = selectedNegKws.length === 0 || !selectedNegKws.some(kw => negKwsList.includes(kw));
+        // Show jobs that HAVE at least one of the selected negative keywords
+        let matchesNegKeyword = selectedNegKws.length === 0 || selectedNegKws.some(kw => negKwsList.includes(kw));
         
         let matchesStatus = true;
         if (statusFilter === 'done') matchesStatus = isDone;
