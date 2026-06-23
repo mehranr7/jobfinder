@@ -4,151 +4,248 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Job Scraper Results</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(51, 65, 85, 0.5);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --success-hover: #059669;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --warning: #f59e0b;
+        }
+
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: #f4f4f9;
-            color: #333;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 400px),
+                              radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.05), transparent 400px);
+            background-attachment: fixed;
+            color: var(--text-main);
             line-height: 1.6;
             margin: 0;
             padding: 20px;
         }
+
         .container {
-            max-width: 900px;
+            max-width: 950px;
             margin: auto;
         }
+
         h1 {
             text-align: center;
-            color: #2c3e50;
+            color: var(--text-main);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
+
         .job-card {
-            background: #fff;
-            padding: 20px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            padding: 20px 25px;
             margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+
+        .job-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .job-card.done {
+            opacity: 0.4;
+            filter: grayscale(100%);
+        }
+
         .job-title {
             margin-top: 0;
-            color: #2980b9;
+            color: var(--text-main);
+            font-size: 1.5em;
+            margin-bottom: 10px;
         }
+
         .job-meta {
             font-size: 0.9em;
-            color: #7f8c8d;
+            color: var(--text-muted);
             margin-bottom: 15px;
-        }
-        .job-meta a {
-            color: #3498db;
-            text-decoration: none;
-        }
-        .job-meta a:hover {
-            text-decoration: underline;
-        }
-        .job-description {
-            background: #ecf0f1;
-            padding: 15px;
-            border-radius: 5px;
-            white-space: pre-wrap;
-            font-family: monospace;
-            font-size: 0.95em;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .desc-header {
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
             align-items: center;
-            margin-bottom: 5px;
         }
-        .copy-btn {
-            background-color: #2980b9;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9em;
+
+        .meta-item {
+            background: rgba(0,0,0,0.2);
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.05);
         }
-        .copy-btn:hover {
-            background-color: #3498db;
-        }
-        .keyword-badge {
-            background-color: #f39c12;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-weight: bold;
-            margin-right: 4px;
+
+        .view-offer-btn {
+            background-color: transparent;
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid #60a5fa;
+            padding: 4px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
             display: inline-block;
         }
-        .negative-badge {
-            background-color: #e74c3c;
+
+        .view-offer-btn:hover {
+            background-color: #60a5fa;
+            color: var(--bg-color);
         }
-        .done-btn {
-            background-color: #27ae60;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9em;
-            margin-right: 10px;
-        }
-        .done-btn:hover {
-            background-color: #2ecc71;
-        }
-        .job-card.done {
-            opacity: 0.5;
-            filter: grayscale(80%);
-            background: #fdfdfd;
-        }
-        .job-card.done .done-btn {
-            background-color: #95a5a6;
-            cursor: pointer;
-        }
-        .job-card.done .done-btn:hover {
-            background-color: #7f8c8d;
-        }
-        .controls {
-            background: #fff;
+
+        .job-description {
+            background: rgba(0,0,0,0.3);
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid var(--card-border);
+            white-space: pre-wrap;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9em;
+            color: #cbd5e1;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 15px;
+            display: none; /* Collapsed by default */
+        }
+
+        .desc-header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-top: 15px;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding-top: 15px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        button {
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .copy-btn { background-color: var(--card-border); color: var(--text-main); }
+        .copy-btn:hover { background-color: rgba(255,255,255,0.2); }
+
+        .done-btn { background-color: var(--success); color: white; }
+        .done-btn:hover { background-color: var(--success-hover); }
+
+        .clear-btn { background-color: var(--danger); color: white; }
+        .clear-btn:hover { background-color: var(--danger-hover); }
+        
+        .toggle-desc-btn { background-color: var(--primary); color: white; margin-right: auto; }
+        .toggle-desc-btn:hover { background-color: var(--primary-hover); }
+
+        .keyword-badge {
+            background-color: rgba(245, 158, 11, 0.2);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-right: 5px;
+            display: inline-block;
+        }
+
+        .negative-badge {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .controls {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid var(--card-border);
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
         }
-        .controls input, .controls select {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            flex: 1;
-            min-width: 200px;
-        }
+
         .control-group {
             display: flex;
             flex: 1;
-            min-width: 200px;
-            gap: 5px;
+            min-width: 220px;
+            gap: 8px;
         }
+
         .control-group input, .control-group select {
             flex: 1;
-            min-width: 0;
-            margin: 0;
+            padding: 10px 12px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
         }
-        .clear-btn {
-            background-color: #e74c3c;
-            color: white;
-            border: none;
-            padding: 8px 12px;
+
+        .control-group input:focus, .control-group select:focus {
+            border-color: var(--primary);
+        }
+
+        .control-group input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .control-group select option {
+            background: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        #jobCountDisplay {
+            color: var(--text-main);
+            border-bottom: 2px solid var(--card-border);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        /* Custom scrollbar for modern feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2); 
             border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9em;
         }
-        .clear-btn:hover {
-            background-color: #c0392b;
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3); 
         }
     </style>
 </head>
@@ -212,27 +309,26 @@
         <div class="job-card {% if job.is_done %}done{% endif %}" data-title="{{ job.title|lower }}" data-keyword="{{ data_kws }}" data-url="{{ job.link }}">
             <h2 class="job-title">{{ job.title }}</h2>
             <div class="job-meta">
-                <span><strong>Company:</strong> {{ job.company }}</span> | 
-                <span><strong>Date:</strong> {{ job.date_of_release | timeago }}</span> | 
-                <span><strong>Keywords:</strong> 
+                <span class="meta-item">🏢 <strong>{{ job.company }}</strong></span>
+                <span class="meta-item">🕒 {{ job.date_of_release | timeago }}</span>
+                <span class="meta-item">
                     {% for kw in pos_kws %}
                         {% if kw.strip() %}<span class="keyword-badge">{{ kw.strip() }}</span>{% endif %}
                     {% endfor %}
                     {% for kw in neg_kws %}
                         {% if kw.strip() %}<span class="keyword-badge negative-badge">{{ kw.strip() }}</span>{% endif %}
                     {% endfor %}
-                </span> | 
-                <span><strong>Link:</strong> <a href="{{ job.link }}" target="_blank">{{ job.link }}</a></span>
+                </span>
+                <a href="{{ job.link }}" target="_blank" class="view-offer-btn">🔗 View Offer</a>
             </div>
+            
             <div class="desc-header">
-                <strong>Description:</strong>
-                <div>
-                    <button class="done-btn" onclick="toggleDone(this, '{{ job.link }}')">
-                        {% if job.is_done %}Undo Done{% else %}✓ Mark as Done{% endif %}
-                    </button>
-                    <button class="clear-btn" onclick="deleteJob(this, '{{ job.link }}')" style="margin-right: 10px; padding: 5px 10px;">🗑️ Delete</button>
-                    <button class="copy-btn" onclick="copyToClipboard('desc-{{ loop.index }}', this)">Copy</button>
-                </div>
+                <button class="toggle-desc-btn" onclick="toggleDescription('desc-{{ loop.index }}', this)">▼ Show Description</button>
+                <button class="done-btn" onclick="toggleDone(this, '{{ job.link }}')">
+                    {% if job.is_done %}Undo Done{% else %}✓ Mark as Done{% endif %}
+                </button>
+                <button class="clear-btn" onclick="deleteJob(this, '{{ job.link }}')">🗑️ Delete</button>
+                <button class="copy-btn" onclick="copyToClipboard('desc-{{ loop.index }}', this)">Copy</button>
             </div>
             <div class="job-description" id="desc-{{ loop.index }}">{{ job.description | safe }}</div>
         </div>
@@ -241,6 +337,17 @@
         
     </div>
     <script>
+        function toggleDescription(elementId, btn) {
+            const desc = document.getElementById(elementId);
+            if (desc.style.display === 'none' || desc.style.display === '') {
+                desc.style.display = 'block';
+                btn.innerText = '▲ Hide Description';
+            } else {
+                desc.style.display = 'none';
+                btn.innerText = '▼ Show Description';
+            }
+        }
+
         function copyToClipboard(elementId, btn) {
             const text = document.getElementById(elementId).innerText;
             navigator.clipboard.writeText(text).then(() => {
