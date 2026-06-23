@@ -160,8 +160,14 @@
             <button class="done-btn" id="runScraperBtn" onclick="runScraper()" style="font-size: 1.1em; padding: 10px 20px;">🚀 Run Scraper</button>
         </div>
         
-        <div id="terminalContainer" style="display: none; background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto; font-family: monospace; margin-bottom: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
-            <pre id="terminalOutput" style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"></pre>
+        <div id="terminalContainer" style="display: none; margin-bottom: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="background: #2c3e50; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #34495e;">
+                <span style="font-weight: bold; font-family: monospace; font-size: 1.1em;">Scraper Logs</span>
+                <button onclick="toggleTerminal()" id="terminalToggleBtn" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em; padding: 0 5px;">▼</button>
+            </div>
+            <div id="terminalOutputWrapper" style="background: #1e1e1e; color: #00ff00; padding: 15px; max-height: 300px; overflow-y: auto; font-family: monospace; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                <pre id="terminalOutput" style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"></pre>
+            </div>
         </div>
         
         <div class="controls">
@@ -245,22 +251,83 @@
             });
         }
 
+        function toggleDone(btn, link) {
+            const card = btn.closest('.job-card');
+            const isCurrentlyDone = card.classList.contains('done');
+            const newStatus = !isCurrentlyDone;
+            
+            btn.disabled = true;
+            btn.innerText = "Updating...";
+            
+            fetch('/api/toggle_done', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    link: link,
+                    is_done: newStatus
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    if(newStatus) {
+                        card.classList.add('done');
+                        btn.innerText = "Undo Done";
+                    } else {
+                        card.classList.remove('done');
+                        btn.innerText = "✓ Mark as Done";
+                    }
+                    filterJobs(); // update counts and visibility if filtered
+                } else {
+                    alert("Failed to update status.");
+                    btn.innerText = isCurrentlyDone ? "Undo Done" : "✓ Mark as Done";
+                }
+            })
+            .catch(error => {
+                console.error("Error toggling done status:", error);
+                alert("Failed to update status due to network error.");
+                btn.innerText = isCurrentlyDone ? "Undo Done" : "✓ Mark as Done";
+            })
+            .finally(() => {
+                btn.disabled = false;
+            });
+        }
+
+        function toggleTerminal() {
+            const wrapper = document.getElementById('terminalOutputWrapper');
+            const btn = document.getElementById('terminalToggleBtn');
+            if (wrapper.style.display === 'none') {
+                wrapper.style.display = 'block';
+                btn.innerText = '▼';
+            } else {
+                wrapper.style.display = 'none';
+                btn.innerText = '▶';
+            }
+        }
+
         function runScraper() {
             const btn = document.getElementById('runScraperBtn');
             const terminalContainer = document.getElementById('terminalContainer');
+            const terminalOutputWrapper = document.getElementById('terminalOutputWrapper');
             const terminalOutput = document.getElementById('terminalOutput');
+            const toggleBtn = document.getElementById('terminalToggleBtn');
             
             btn.disabled = true;
             btn.innerText = "Scraping in progress... (this may take a few minutes)";
             btn.style.backgroundColor = "#7f8c8d";
             terminalContainer.style.display = 'block';
+            terminalOutputWrapper.style.display = 'block';
+            toggleBtn.innerText = '▼';
             terminalOutput.innerHTML = '';
             
             const source = new EventSource('/api/run_scraper');
             
             source.onmessage = function(event) {
                 terminalOutput.innerHTML += event.data + '<br>';
-                terminalContainer.scrollTop = terminalContainer.scrollHeight;
+                const wrapper = document.getElementById('terminalOutputWrapper');
+                wrapper.scrollTop = wrapper.scrollHeight;
             };
             
             source.addEventListener('close', function(event) {
@@ -269,7 +336,9 @@
                 btn.innerText = "🚀 Run Scraper";
                 btn.style.backgroundColor = "#27ae60";
                 terminalOutput.innerHTML += '<br><span style="color: yellow;">Scraping finished! Refreshing page...</span><br>';
-                terminalContainer.scrollTop = terminalContainer.scrollHeight;
+                const wrapper = document.getElementById('terminalOutputWrapper');
+                wrapper.scrollTop = wrapper.scrollHeight;
+                sessionStorage.setItem('scraperLogs', terminalOutput.innerHTML);
                 setTimeout(() => window.location.reload(), 1500);
             });
             
@@ -284,6 +353,15 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
+            const savedLogs = sessionStorage.getItem('scraperLogs');
+            if (savedLogs) {
+                document.getElementById('terminalContainer').style.display = 'block';
+                document.getElementById('terminalOutputWrapper').style.display = 'block';
+                document.getElementById('terminalOutput').innerHTML = savedLogs;
+                const wrapper = document.getElementById('terminalOutputWrapper');
+                wrapper.scrollTop = wrapper.scrollHeight;
+            }
+
             const jobCards = Array.from(document.querySelectorAll('.job-card'));
             const keywords = new Set();
             jobCards.forEach(card => {
