@@ -54,7 +54,7 @@ def scrape_stellenwerk(page, url):
         date_tag = a_tag.find("p", class_=re.compile("text-right"))
         if date_tag:
             date_raw = date_tag.get_text(strip=True)
-            date = parse_relative_date(date_raw)
+            date = utils.parse_relative_date(date_raw)
             
         card_text = a_tag.get_text(separator=' ', strip=True)
         
