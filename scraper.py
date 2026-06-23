@@ -12,6 +12,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 with open("config.yml", "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
+TARGET_URLS = config.get("target_urls", [])
 KEYWORDS = config.get("keywords", [])
 NEGATIVE_KEYWORDS = config.get("negative_keywords", [])
 DELAY_MIN_MS = config.get("delay_min_ms", 1500)
