@@ -1,6 +1,6 @@
-{% set pos_kws = job.keyword.split(',') if job.keyword else [] %}
-{% set neg_kws = job.negative_keyword.split(',') if job.negative_keyword else [] %}
-{% set data_kws = job.keyword + " " + job.negative_keyword %}
+{% set pos_kws = job.keywords.split(',') if job.keywords else [] %}
+{% set neg_kws = job.negative_keywords.split(',') if job.negative_keywords else [] %}
+{% set data_kws = ((job.keywords or '') ~ " " ~ (job.negative_keywords or ''))|lower %}
 
 <div class="job-card {% if job.is_done %}done{% endif %}" data-title="{{ job.title|lower }}"
     data-keyword="{{ data_kws }}" data-url="{{ job.link }}">
