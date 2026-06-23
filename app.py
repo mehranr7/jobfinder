@@ -106,5 +106,5 @@ if __name__ == '__main__':
     print("👉 CLICK HERE TO OPEN: http://localhost:5000")
     print("="*50 + "\n")
     
-    # Run the app, accessible externally for Docker
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    # Run the app, accessible externally for Docker (binds to both IPv4 and IPv6)
+    app.run(host='::', port=5050, debug=False)
