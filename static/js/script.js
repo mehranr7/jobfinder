@@ -201,9 +201,9 @@ function runScraper() {
         if (event.data === "DONE") {
             source.close();
             btn.disabled = false;
-            btn.innerText = "🚀 Run Scraper";
-            termOut.innerHTML += '\nScraper finished.\n';
-            setTimeout(() => location.reload(), 2000);
+            btn.innerText = "🔄 Refresh to see new jobs";
+            btn.onclick = () => location.reload();
+            termOut.innerHTML += '\nScraper finished. Please refresh the page to see new jobs.\n';
         } else {
             termOut.innerHTML += event.data + '\n';
             termWrapper.scrollTop = termWrapper.scrollHeight;
