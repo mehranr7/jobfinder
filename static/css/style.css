@@ -182,6 +182,8 @@ button {
     display: flex;
     gap: 15px;
     flex-wrap: wrap;
+    position: relative;
+    z-index: 1000;
 }
 
 .control-group {
