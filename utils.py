@@ -53,7 +53,7 @@ def parse_relative_date(date_text):
 
 def timeago_filter(dt_string):
     if not dt_string:
-        return "Unbekannt"
+        return "Unknown"
         
     try:
         dt = datetime.fromisoformat(dt_string)
@@ -65,25 +65,25 @@ def timeago_filter(dt_string):
     
     seconds = int(diff.total_seconds())
     if seconds < 60:
-        return "Gerade eben"
+        return "Just now"
     
     minutes = seconds // 60
     if minutes < 60:
-        return f"vor {minutes} Minute{'n' if minutes != 1 else ''}"
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
         
     hours = minutes // 60
     if hours < 24:
-        return f"vor {hours} Stunde{'n' if hours != 1 else ''}"
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
         
     days = hours // 24
     if days < 7:
         if days == 1:
-            return "Gestern"
-        return f"vor {days} Tag{'en' if days != 1 else ''}"
+            return "Yesterday"
+        return f"{days} day{'s' if days != 1 else ''} ago"
         
     weeks = days // 7
     if weeks < 4:
-        return f"vor {weeks} Woche{'n' if weeks != 1 else ''}"
+        return f"{weeks} week{'s' if weeks != 1 else ''} ago"
         
     months = days // 30
-    return f"vor {months} Monat{'en' if months != 1 else ''}"
+    return f"{months} month{'s' if months != 1 else ''} ago"
