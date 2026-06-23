@@ -285,10 +285,6 @@ function toggleTerminal() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    window.jobCards = Array.from(document.querySelectorAll('.job-card'));
-    window.originalJobCards = [...window.jobCards];
-    
 function populateDropdowns() {
     // Populate the keyword dropdowns
     const keywords = new Set();
