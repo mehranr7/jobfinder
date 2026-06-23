@@ -184,11 +184,6 @@ function sortJobs() {
     sortedCards.forEach(card => container.appendChild(card));
 }
 
-function clearSort() {
-    document.getElementById('sortSelect').value = 'date-asc';
-    sortJobs();
-}
-
 function runScraper() {
     const btn = document.getElementById('runScraperBtn');
     const term = document.getElementById('terminalContainer');
@@ -268,4 +263,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     filterJobs(); // Initial count
+    sortJobs();   // Initial sort based on default value
 });

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,24 +8,30 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
     <div class="container">
         <h1>Scraped Job Offers</h1>
-        
+
         <div style="margin-bottom: 20px; text-align: center;">
-            <button class="done-btn" id="runScraperBtn" onclick="runScraper()" style="font-size: 1.1em; padding: 10px 20px;">🚀 Run Scraper</button>
+            <button class="done-btn" id="runScraperBtn" onclick="runScraper()"
+                style="font-size: 1.1em; padding: 10px 20px;">🚀 Run Scraper</button>
         </div>
-        
-        <div id="terminalContainer" style="display: none; margin-bottom: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div style="background: #2c3e50; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #34495e;">
+
+        <div id="terminalContainer"
+            style="display: none; margin-bottom: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div
+                style="background: #2c3e50; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #34495e;">
                 <span style="font-weight: bold; font-family: monospace; font-size: 1.1em;">Scraper Logs</span>
-                <button onclick="toggleTerminal()" id="terminalToggleBtn" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em; padding: 0 5px;">▼</button>
+                <button onclick="toggleTerminal()" id="terminalToggleBtn"
+                    style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em; padding: 0 5px;">▼</button>
             </div>
-            <div id="terminalOutputWrapper" style="background: #1e1e1e; color: #00ff00; padding: 15px; max-height: 300px; overflow-y: auto; font-family: monospace; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+            <div id="terminalOutputWrapper"
+                style="background: #1e1e1e; color: #00ff00; padding: 15px; max-height: 300px; overflow-y: auto; font-family: monospace; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
                 <pre id="terminalOutput" style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"></pre>
             </div>
         </div>
-        
+
         <div class="controls">
             <div class="control-group">
                 <select id="statusFilter" onchange="filterJobs()">
@@ -52,26 +59,28 @@
             </div>
             <div class="control-group">
                 <select id="sortSelect" onchange="sortJobs()">
-                    <option value="date-asc">Date (Newest First)</option>
-                    <option value="date-desc">Date (Oldest First)</option>
+                    <option value="date-desc" selected>Date (Newest First)</option>
+                    <option value="date-asc">Date (Oldest First)</option>
                     <option value="title-asc">Title (A-Z)</option>
                     <option value="title-desc">Title (Z-A)</option>
                     <option value="keyword-asc">Keyword (A-Z)</option>
                 </select>
-                <button class="clear-btn" onclick="clearSort()">Clear</button>
             </div>
         </div>
 
-        <h3 id="jobCountDisplay" style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-top: 5px;">Total Offers: 0</h3>
+        <h3 id="jobCountDisplay"
+            style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-top: 5px;">Total
+            Offers: 0</h3>
 
         <div class="jobs-container">
-        {% for job in jobs %}
+            {% for job in jobs %}
             {% set loop_index = loop.index %}
             {% include 'job_card.html' %}
-        {% endfor %}
-    </div>
-        
+            {% endfor %}
+        </div>
+
     </div>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
+
 </html>
