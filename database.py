@@ -47,6 +47,11 @@ def init_db():
     except sqlite3.OperationalError:
         pass # Column already exists
 
+    try:
+        c.execute('ALTER TABLE jobs ADD COLUMN cv_type TEXT DEFAULT ""')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
     conn.commit()
     conn.close()
 
@@ -63,8 +68,8 @@ def insert_job(job_dict):
     c = conn.cursor()
     try:
         c.execute('''
-            INSERT INTO jobs (link, title, company, date_of_release, keywords, negative_keywords, description, description_tags, neg_description_tags, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO jobs (link, title, company, date_of_release, keywords, negative_keywords, description, description_tags, neg_description_tags, status, cv_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             job_dict.get('link'),
             job_dict.get('title'),
@@ -75,7 +80,8 @@ def insert_job(job_dict):
             job_dict.get('description', ''),
             job_dict.get('description_tags', ''),
             job_dict.get('neg_description_tags', ''),
-            'Unseen'
+            'Unseen',
+            ''
         ))
         conn.commit()
     except sqlite3.IntegrityError:
@@ -96,6 +102,13 @@ def update_job_status(link, status):
     conn = get_connection()
     c = conn.cursor()
     c.execute('UPDATE jobs SET status = ? WHERE link = ?', (status, link))
+    conn.commit()
+    conn.close()
+
+def update_job_cv_type(link, cv_type):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('UPDATE jobs SET cv_type = ? WHERE link = ?', (cv_type, link))
     conn.commit()
     conn.close()
 

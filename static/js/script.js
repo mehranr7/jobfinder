@@ -75,6 +75,43 @@ function changeStatus(btn, link, newStatus) {
     });
 }
 
+function changeCV(selectElement, link) {
+    const cvType = selectElement.value;
+    const wrapper = selectElement.closest('.cv-selector-wrapper');
+    const originalBorder = selectElement.style.borderColor;
+    
+    selectElement.disabled = true;
+    
+    fetch('/api/change_cv', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            link: link,
+            cv_type: cvType
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.success) {
+            selectElement.style.borderColor = 'var(--success)';
+            setTimeout(() => {
+                selectElement.style.borderColor = originalBorder;
+            }, 2000);
+            selectElement.disabled = false;
+        } else {
+            alert("Failed to update CV.");
+            selectElement.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error("Error changing CV:", error);
+        alert("Failed to update CV due to network error.");
+        selectElement.disabled = false;
+    });
+}
+
 function deleteJob(btn, link) {
     if(!confirm("Are you sure you want to permanently delete this job offer? (Note: If it's still live on the website, it might be scraped again next time.)")) return;
     

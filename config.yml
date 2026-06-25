@@ -5,12 +5,14 @@ delay_max_ms: 1500
 special_keyword_threshold: 3
 
 stellenwerk_link: "https://www.stellenwerk.de/hamburg"
-stellenwerk_pages: 4
+stellenwerk_pages: 6
 
 stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?action=facet_selected%3bdisciplines%3bIngenieurwesen&wt=80002&di=IT&di=Ingenieurwesen"
-stepstone_pages: 2
+stepstone_pages: 4
 keywords:
   - "Werkstudent"
+  - "Werkstudent*in"
+  - "working student"
   - "Studierende"
   - "Informatik"
   - "Computer"
@@ -28,6 +30,9 @@ keywords:
   - "Data Engineer"
   - "Data Scientist"
   - "NLP"
+  - "APP"
+  - "Mobile"
+  - "Application"
   - "Python"
   - "PyTorch"
   - "TensorFlow"
@@ -48,8 +53,6 @@ keywords:
   - "CNN"
   - "SVM"
   - "LLM"
-  - "Softwareentwickler"
-  - "Software Engineer"
   - "Backend"
   - "Full Stack"
   - "C#"
@@ -106,6 +109,7 @@ keywords:
   - "Software"
   - "Backend"
   - "Developer"
+  - "Development"
   - "Praktikum"
   - "Junior"
   - "Informatik"
@@ -154,3 +158,21 @@ negative_keywords:
   - "Architektur"
   - "Auditor"
   - "TGA"
+  - "1 Jahre Erfahrung"
+  - "2 Jahre Erfahrung"
+  - "3 Jahre Erfahrung"
+  - "4 Jahre Erfahrung" 
+  - "5 Jahre Erfahrung"
+  - "6 Jahre Erfahrung"
+  - "7 Jahre Erfahrung"
+  - "8 Jahre Erfahrung"
+  - "9 Jahre Erfahrung"
+  - "Hochbau"
+  - "Consultant"
+  - "BI"
+  - "SPS"
+  - "DESY"
+  - "TwinCAT"
+  - "Mehrjährige"
+  - "Mehrjährig"
+  - "Bauingenieurin"

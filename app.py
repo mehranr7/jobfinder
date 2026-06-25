@@ -53,6 +53,18 @@ def change_status():
     database.update_job_status(link, status)
     return jsonify({'success': True, 'link': link, 'status': status})
 
+@app.route('/api/change_cv', methods=['POST'])
+def change_cv():
+    data = request.get_json()
+    link = data.get('link')
+    cv_type = data.get('cv_type')
+    
+    if link is None or cv_type is None:
+        return jsonify({'error': 'Missing link or cv_type'}), 400
+        
+    database.update_job_cv_type(link, cv_type)
+    return jsonify({'success': True, 'link': link, 'cv_type': cv_type})
+
 @app.route('/api/delete_job', methods=['POST'])
 def delete_job():
     data = request.get_json()

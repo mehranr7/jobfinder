@@ -13,6 +13,15 @@
     <div class="job-meta">
         <span class="meta-item">🏢 <strong>{{ job.company }}</strong></span>
         <span class="meta-item">🕒 {{ job.date_of_release | timeago }}</span>
+        <span class="meta-item cv-selector-wrapper">
+            CV:
+            <select class="cv-select" onchange="changeCV(this, '{{ job.link }}')">
+                <option value="" {% if not job.cv_type %}selected{% endif %}>None</option>
+                <option value="Software" {% if job.cv_type == 'Software' %}selected{% endif %}>Software</option>
+                <option value="AI" {% if job.cv_type == 'AI' %}selected{% endif %}>AI</option>
+                <option value="General" {% if job.cv_type == 'General' %}selected{% endif %}>General</option>
+            </select>
+        </span>
         <span class="meta-item">
             {% for kw in pos_kws %}
             {% if kw.strip() %}<span class="keyword-badge">{{ kw.strip() }}</span>{% endif %}
@@ -42,15 +51,15 @@
 
     <div class="desc-header">
         <button class="toggle-desc-btn" onclick="toggleDescription('desc-{{ loop_index }}', this)"
-            title="Show/Hide Description">🔽</button>
+            title="Show/Hide Description">📄</button>
         <button class="clear-btn" onclick="deleteJob(this, '{{ job.link }}')" title="Delete Job">🗑️</button>
         <div class="status-btn-group">
             <button class="status-btn btn-unseen {% if (job.status or 'Unseen') == 'Unseen' %}active{% endif %}"
-                onclick="changeStatus(this, '{{ job.link }}', 'Unseen')" title="Unseen">👀</button>
+                onclick="changeStatus(this, '{{ job.link }}', 'Unseen')" title="Unseen">🆕</button>
             <button class="status-btn btn-applied {% if job.status == 'Applied' %}active{% endif %}"
                 onclick="changeStatus(this, '{{ job.link }}', 'Applied')" title="Applied">✅</button>
             <button class="status-btn btn-skipped {% if job.status == 'Skipped' %}active{% endif %}"
-                onclick="changeStatus(this, '{{ job.link }}', 'Skipped')" title="Skipped">⏭️</button>
+                onclick="changeStatus(this, '{{ job.link }}', 'Skipped')" title="Skipped">❌</button>
         </div>
         <button class="copy-btn" onclick="copyToClipboard('desc-{{ loop_index }}', this)"
             title="Copy Description">📋</button>
