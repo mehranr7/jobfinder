@@ -13,15 +13,6 @@
     <div class="job-meta">
         <span class="meta-item">🏢 <strong>{{ job.company }}</strong></span>
         <span class="meta-item">🕒 {{ job.date_of_release | timeago }}</span>
-        <span class="meta-item cv-selector-wrapper">
-            CV:
-            <select class="cv-select" onchange="changeCV(this, '{{ job.link }}')">
-                <option value="" {% if not job.cv_type %}selected{% endif %}>None</option>
-                <option value="Software" {% if job.cv_type == 'Software' %}selected{% endif %}>Software</option>
-                <option value="AI" {% if job.cv_type == 'AI' %}selected{% endif %}>AI</option>
-                <option value="General" {% if job.cv_type == 'General' %}selected{% endif %}>General</option>
-            </select>
-        </span>
         <span class="meta-item">
             {% for kw in pos_kws %}
             {% if kw.strip() %}<span class="keyword-badge">{{ kw.strip() }}</span>{% endif %}
@@ -29,6 +20,15 @@
             {% for kw in neg_kws %}
             {% if kw.strip() %}<span class="keyword-badge negative-badge">{{ kw.strip() }}</span>{% endif %}
             {% endfor %}
+        </span>
+        <span class="meta-item cv-selector-wrapper">
+            CV:
+            <select class="cv-select" onchange="changeCV(this, '{{ job.link }}')">
+                <option value="" {% if not job.cv_type %}selected{% endif %}>None</option>
+                <option value="Software" {% if job.cv_type=='Software' %}selected{% endif %}>Software</option>
+                <option value="AI" {% if job.cv_type=='AI' %}selected{% endif %}>AI</option>
+                <option value="General" {% if job.cv_type=='General' %}selected{% endif %}>General</option>
+            </select>
         </span>
         <a href="{{ job.link }}" target="_blank" class="view-offer-btn" title="View Offer">🔗</a>
     </div>
