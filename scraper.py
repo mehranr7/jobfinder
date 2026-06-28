@@ -104,7 +104,11 @@ def scrape_stellenwerk(page, url):
     Extracts the title, date, and link, and filters by defined keywords.
     """
     jobs = []
-    page.goto(url)
+    try:
+        page.goto(url)
+    except Exception as e:
+        print(f"  [!] Failed to load URL: {e}")
+        return jobs
     
     try:
         page.wait_for_selector("p.text-xl", timeout=10000)
@@ -160,7 +164,11 @@ def scrape_stepstone(page, url):
     Extracts jobs listed inside 'article' tags.
     """
     jobs = []
-    page.goto(url)
+    try:
+        page.goto(url)
+    except Exception as e:
+        print(f"  [!] Failed to load URL: {e}")
+        return jobs
     
     try:
         page.wait_for_selector("article", timeout=15000)
