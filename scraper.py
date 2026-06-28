@@ -160,23 +160,24 @@ def scrape_stellenwerk(page, url):
 
 def scrape_stepstone(page, url):
     """
-    Scrapes job offers from a Stepstone URL using Playwright.
+    Scrapes job offers from a Stepstone URL.
     Extracts jobs listed inside 'article' tags.
     """
+    import requests
     jobs = []
-    try:
-        page.goto(url)
-    except Exception as e:
-        print(f"  [!] Failed to load URL: {e}")
-        return jobs
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    }
     
     try:
-        page.wait_for_selector("article", timeout=15000)
-    except:
-        print("  [!] Timeout / Blocked")
+        r = requests.get(url, headers=headers, timeout=15)
+        r.raise_for_status()
+        html = r.text
+    except Exception as e:
+        print(f"  [!] Failed to load URL via requests: {e}")
         return jobs
 
-    html = page.content()
     soup = BeautifulSoup(html, 'html.parser')
     
     articles = soup.find_all("article")
@@ -321,9 +322,16 @@ def main(log_queue=None):
                 
                 # Deep Scrape
                 try:
-                    page.goto(job['link'], timeout=15000)
-                    page.wait_for_load_state("domcontentloaded")
-                    html = page.content()
+                    if "stepstone.de" in job['link']:
+                        import requests
+                        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'}
+                        r = requests.get(job['link'], headers=headers, timeout=15)
+                        html = r.text
+                    else:
+                        page.goto(job['link'], timeout=15000)
+                        page.wait_for_load_state("domcontentloaded")
+                        html = page.content()
+                    
                     job['description'] = utils.clean_text(html)
                     
                     desc_tags = []
