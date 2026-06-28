@@ -221,13 +221,19 @@ h1 {
 
 .desc-header {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     margin-top: 15px;
     gap: 10px;
     flex-wrap: wrap;
     padding-top: 15px;
     border-top: 1px solid var(--card-border);
+}
+
+.desc-header-left, .desc-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 button {
