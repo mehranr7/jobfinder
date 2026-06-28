@@ -112,6 +112,91 @@ function changeCV(selectElement, link) {
         });
 }
 
+function changeAppState(selectElement, link) {
+    const appState = selectElement.value;
+    const originalBorder = selectElement.style.borderColor;
+    
+    selectElement.disabled = true;
+    
+    fetch('/api/change_app_state', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            link: link,
+            app_state: appState
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.success) {
+            selectElement.style.borderColor = 'var(--success)';
+            setTimeout(() => {
+                selectElement.style.borderColor = originalBorder;
+            }, 2000);
+            selectElement.disabled = false;
+        } else {
+            alert("Failed to update State.");
+            selectElement.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error("Error changing state:", error);
+        alert("Failed to update state due to network error.");
+        selectElement.disabled = false;
+    });
+}
+
+function openNoteModal(link) {
+    // Find the button to get the note data
+    const noteBtn = document.querySelector(`button[onclick="openNoteModal('${link}')"]`);
+    const noteText = noteBtn ? noteBtn.getAttribute('data-note') : '';
+    
+    document.getElementById('noteJobLink').value = link;
+    document.getElementById('noteTextarea').value = noteText;
+    document.getElementById('noteModal').style.display = 'flex';
+}
+
+function closeNoteModal() {
+    document.getElementById('noteModal').style.display = 'none';
+}
+
+function saveNote() {
+    const link = document.getElementById('noteJobLink').value;
+    const note = document.getElementById('noteTextarea').value;
+    
+    fetch('/api/save_note', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            link: link,
+            note: note
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.success) {
+            // Update the data-note attribute on the button so it persists without refresh
+            const noteBtn = document.querySelector(`button[onclick="openNoteModal('${link}')"]`);
+            if (noteBtn) {
+                noteBtn.setAttribute('data-note', note);
+                noteBtn.style.color = 'var(--success)';
+                setTimeout(() => noteBtn.style.color = '', 2000);
+            }
+            closeNoteModal();
+        } else {
+            alert("Failed to save note.");
+        }
+    })
+    .catch(error => {
+        console.error("Error saving note:", error);
+        alert("Failed to save note due to network error.");
+    });
+}
+
 function deleteJob(btn, link) {
     if (!confirm("Are you sure you want to permanently delete this job offer? (Note: If it's still live on the website, it might be scraped again next time.)")) return;
 

@@ -9,14 +9,18 @@
     data-pos-keyword="{{ pos_kws|join(',')|lower }}" data-neg-keyword="{{ neg_kws|join(',')|lower }}"
     data-desc-tags="{{ desc_tags|join(',')|lower }}" data-neg-desc-tags="{{ neg_desc_tags|join(',')|lower }}"
     data-url="{{ job.link }}" data-date="{{ job.date_of_release }}">
-    <h2 class="job-title">{{ job.title }}</h2>
+    <h2 class="job-title"><a href="{{ job.link }}" target="_blank" class="title-link">{{ job.title }}</a></h2>
     <div class="job-meta">
         <span class="meta-item">🏢 <strong>{{ job.company }}</strong></span>
         <span class="meta-item">🕒 {{ job.date_of_release | timeago }}</span>
         <span class="meta-item">
+            {% set pos_clean = pos_kws | reject('eq', '') | list %}
+            {% if pos_clean %} <span class="count-badge pos-count" title="Positive Keywords">{{ pos_clean|length }}</span> {% endif %}
             {% for kw in pos_kws %}
             {% if kw.strip() %}<span class="keyword-badge">{{ kw.strip() }}</span>{% endif %}
             {% endfor %}
+            {% set neg_clean = neg_kws | reject('eq', '') | list %}
+            {% if neg_clean %} <span class="count-badge neg-count" title="Negative Keywords">{{ neg_clean|length }}</span> {% endif %}
             {% for kw in neg_kws %}
             {% if kw.strip() %}<span class="keyword-badge negative-badge">{{ kw.strip() }}</span>{% endif %}
             {% endfor %}
@@ -29,8 +33,14 @@
                 <option value="AI" {% if job.cv_type=='AI' %}selected{% endif %}>AI</option>
                 <option value="General" {% if job.cv_type=='General' %}selected{% endif %}>General</option>
             </select>
+            | State:
+            <select class="cv-select app-state-select" onchange="changeAppState(this, '{{ job.link }}')">
+                <option value="None" {% if job.app_state == 'None' or not job.app_state %}selected{% endif %}>None</option>
+                <option value="interviewing" {% if job.app_state == 'interviewing' %}selected{% endif %}>interviewing</option>
+                <option value="rejected" {% if job.app_state == 'rejected' %}selected{% endif %}>rejected</option>
+                <option value="accepted" {% if job.app_state == 'accepted' %}selected{% endif %}>accepted</option>
+            </select>
         </span>
-        <a href="{{ job.link }}" target="_blank" class="view-offer-btn" title="View Offer">🔗</a>
     </div>
 
     {% if desc_tags or neg_desc_tags %}
@@ -53,6 +63,7 @@
         <button class="toggle-desc-btn" onclick="toggleDescription('desc-{{ loop_index }}', this)"
             title="Show/Hide Description">📄</button>
         <button class="clear-btn" onclick="deleteJob(this, '{{ job.link }}')" title="Delete Job">🗑️</button>
+        <button class="note-btn" onclick="openNoteModal('{{ job.link }}')" data-note="{{ job.note or '' }}" id="note-btn-{{ loop_index }}" title="View/Edit Note">📝</button>
         <div class="status-btn-group">
             <button class="status-btn btn-unseen {% if (job.status or 'Unseen') == 'Unseen' %}active{% endif %}"
                 onclick="changeStatus(this, '{{ job.link }}', 'Unseen')" title="Unseen">🆕</button>

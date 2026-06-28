@@ -65,6 +65,30 @@ def change_cv():
     database.update_job_cv_type(link, cv_type)
     return jsonify({'success': True, 'link': link, 'cv_type': cv_type})
 
+@app.route('/api/change_app_state', methods=['POST'])
+def change_app_state():
+    data = request.get_json()
+    link = data.get('link')
+    app_state = data.get('app_state')
+    
+    if link is None or app_state is None:
+        return jsonify({'error': 'Missing link or app_state'}), 400
+        
+    database.update_job_app_state(link, app_state)
+    return jsonify({'success': True, 'link': link, 'app_state': app_state})
+
+@app.route('/api/save_note', methods=['POST'])
+def save_note():
+    data = request.get_json()
+    link = data.get('link')
+    note = data.get('note')
+    
+    if link is None or note is None:
+        return jsonify({'error': 'Missing link or note'}), 400
+        
+    database.update_job_note(link, note)
+    return jsonify({'success': True, 'link': link, 'note': note})
+
 @app.route('/api/delete_job', methods=['POST'])
 def delete_job():
     data = request.get_json()
