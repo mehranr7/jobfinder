@@ -45,11 +45,16 @@
 
     {% if desc_tags or neg_desc_tags %}
     <div class="job-meta" style="margin-top: 5px;">
-        <span class="meta-item" style="color: #7f8c8d; font-size: 0.85em;">🔍 {% for tag in desc_tags %}
+        <span class="meta-item" style="color: #7f8c8d; font-size: 0.85em;">🔍 
+            {% set desc_clean = desc_tags | reject('eq', '') | list %}
+            {% if desc_clean %} <span class="count-badge pos-count" title="Positive Description Tags">{{ desc_clean|length }}</span> {% endif %}
+            {% for tag in desc_tags %}
             {% if tag.strip() %}<span class="keyword-badge"
                 style="background-color: transparent; border: 1px solid #bdc3c7; color: #7f8c8d; font-size: 0.9em; padding: 2px 6px; margin-left: 4px;">{{
                 tag.strip() }}</span>{% endif %}
             {% endfor %}
+            {% set neg_desc_clean = neg_desc_tags | reject('eq', '') | list %}
+            {% if neg_desc_clean %} <span class="count-badge neg-count" title="Negative Description Tags">{{ neg_desc_clean|length }}</span> {% endif %}
             {% for ntag in neg_desc_tags %}
             {% if ntag.strip() %}<span class="keyword-badge negative-badge"
                 style="background-color: transparent; font-size: 0.9em; padding: 2px 6px; margin-left: 4px;">{{
