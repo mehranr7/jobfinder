@@ -154,7 +154,8 @@ def scrape_stellenwerk(page, url):
                 "link": job_link,
                 "company": "Stellenwerk",
                 "keyword": ", ".join(matched_keywords),
-                "negative_keyword": ", ".join(matched_negative_keywords)
+                "negative_keyword": ", ".join(matched_negative_keywords),
+                "preview_text": card_text
             })
     return jobs
 
@@ -234,7 +235,8 @@ def scrape_stepstone(page, url):
                 "link": job_link,
                 "company": "Stepstone",
                 "keyword": ", ".join(matched_keywords),
-                "negative_keyword": ", ".join(matched_negative_keywords)
+                "negative_keyword": ", ".join(matched_negative_keywords),
+                "preview_text": card_text
             })
     return jobs
 
@@ -322,15 +324,9 @@ def main(log_queue=None):
                 
                 # Deep Scrape
                 try:
-                    if "stepstone.de" in job['link']:
-                        import requests
-                        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'}
-                        r = requests.get(job['link'], headers=headers, timeout=15)
-                        html = r.text
-                    else:
-                        page.goto(job['link'], timeout=15000)
-                        page.wait_for_load_state("domcontentloaded")
-                        html = page.content()
+                    page.goto(job['link'], timeout=20000)
+                    page.wait_for_load_state("domcontentloaded")
+                    html = page.content()
                     
                     job['description'] = utils.clean_text(html)
                     
@@ -352,9 +348,29 @@ def main(log_queue=None):
                     unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
                     job['neg_description_tags'] = ", ".join(unique_neg_tags)
                 except Exception as e:
-                    job['description'] = "Failed to extract content."
-                    job['description_tags'] = ""
-                    job['neg_description_tags'] = ""
+                    print(f"Deep scrape error for {job['link']}: {e}")
+                    job['description'] = job.get('preview_text', 'Failed to extract content.')
+                    
+                    # Extract tags from the preview text fallback
+                    desc_tags = []
+                    for kw in KEYWORDS:
+                        if re.search(r'\b' + re.escape(kw) + r'\b', job['description'], re.IGNORECASE):
+                            desc_tags.append(kw)
+                    seen = set()
+                    unique_tags = [x for x in desc_tags if not (x in seen or seen.add(x))]
+                    job['description_tags'] = ", ".join(unique_tags)
+                    
+                    neg_desc_tags = []
+                    for nkw in NEGATIVE_KEYWORDS:
+                        if re.search(r'\b' + re.escape(nkw) + r'\b', job['description'], re.IGNORECASE):
+                            neg_desc_tags.append(nkw)
+                    seen_neg = set()
+                    unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
+                    job['neg_description_tags'] = ", ".join(unique_neg_tags)
+                    
+                # Remove preview_text before DB insertion as it's not a DB column
+                if 'preview_text' in job:
+                    del job['preview_text']
                     
                 # Insert into DB
                 database.insert_job(job)
