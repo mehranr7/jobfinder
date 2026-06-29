@@ -139,7 +139,7 @@ def scrape_stellenwerk(page, url):
         
         matched_keywords = []
         for kw in KEYWORDS:
-            if re.search(r'\b' + re.escape(kw) + r'\b', card_text, re.IGNORECASE):
+            if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
                 matched_keywords.append(kw)
                 
         matched_negative_keywords = []
@@ -220,7 +220,7 @@ def scrape_stepstone(page, url):
         
         matched_keywords = []
         for kw in KEYWORDS:
-            if re.search(r'\b' + re.escape(kw) + r'\b', card_text, re.IGNORECASE):
+            if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
                 matched_keywords.append(kw)
                 
         matched_negative_keywords = []
