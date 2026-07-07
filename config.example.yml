@@ -4,6 +4,9 @@ delay_min_ms: 1000
 delay_max_ms: 1500
 special_keyword_threshold: 3
 
+# API Keys
+gemini_api_key: "YOUR_GEMINI_API_KEY_HERE"
+
 stellenwerk_link: "https://www.stellenwerk.de/hamburg"
 stellenwerk_pages: 6
 

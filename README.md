@@ -19,16 +19,18 @@ A powerful, containerized web application built with Python, Flask, and Playwrig
    Edit `config.yml` to define your target base URLs, the number of pages to scrape, and your positive/negative keywords:
    ```yaml
    stellenwerk_link: "https://www.stellenwerk.de/hamburg"
-   stellenwerk_pages: 2
+## Quick Start
 
-   stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?..."
-   stepstone_pages: 2
-   ```
-
-2. **Run with Docker Compose**
-   Build and start the application container in detached mode:
+1. **Clone the repository.**
+2. **Setup your Configuration:**
+   Copy the example config file and fill in your keywords and API keys:
    ```bash
-   docker-compose up -d --build
+   cp config.example.yml config.yml
+   ```
+   Open `config.yml` in your editor and enter your `gemini_api_key`, along with any target keywords.
+3. **Start the application with Docker:**
+   ```bash
+   docker compose up --build
    ```
 
 3. **Open the Web UI**
