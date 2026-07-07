@@ -321,11 +321,18 @@ def main(log_queue=None):
                 
                 # Deep Scrape
                 try:
-                    page.goto(job['link'], timeout=20000)
-                    page.wait_for_load_state("domcontentloaded")
-                    html = page.content()
+                    try:
+                        page.goto(job['link'], timeout=20000, wait_until='domcontentloaded')
+                    except Exception as goto_err:
+                        print(f"Goto error (proceeding to extract anyway): {goto_err}")
+                        
+                    page.wait_for_timeout(1500) # Wait for React/dynamic content to load
                     
-                    job['description'] = utils.clean_text(html)
+                    text_content = page.locator('body').inner_text()
+                    if len(text_content) < 150:
+                        raise ValueError("Extracted text is too short, falling back.")
+                        
+                    job['description'] = utils.clean_text(text_content) # Just for extra safety with spacing
                     
                     desc_tags = []
                     for kw in KEYWORDS:
