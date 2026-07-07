@@ -1,0 +1,9 @@
+.git
+.gitignore
+jobs.db
+__pycache__/
+*.pyc
+config.example.yml
+config.yml
+docker-compose.yml
+.dockerignore
