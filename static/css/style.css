@@ -203,6 +203,20 @@ h1 {
 .cancel-btn {
     background-color: transparent;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-main);
+}
+
+.cancel-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.action-btn {
+    background-color: var(--text-main);
+    color: var(--bg-color);
+}
+
+.action-btn:hover {
+    background-color: #e2e8f0;
 }
 .job-description {
     background: rgba(0, 0, 0, 0.3);
