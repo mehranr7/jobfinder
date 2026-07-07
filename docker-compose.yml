@@ -11,7 +11,4 @@ services:
       - ./jobs.db:/app/jobs.db
       # Persist the configuration locally so you can edit it without rebuilding
       - ./config.yml:/app/config.yml
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     restart: unless-stopped

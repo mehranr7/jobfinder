@@ -1,6 +1,6 @@
 requests==2.31.0
 beautifulsoup4==4.12.2
 pyyaml
-playwright
+
 Flask
-curl-cffi==0.15.0
+

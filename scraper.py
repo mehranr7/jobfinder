@@ -303,22 +303,19 @@ def main(log_queue=None):
                 if not check_state(log_queue):
                     break
                     
+                title_disp = utils.truncate(job['title'], 50)
+                    
                 if database.job_exists(job['link']):
+                    emit_log(f"  -> SKIPPED (In DB): {title_disp} | {i+1}/{total_jobs}", log_queue)
                     continue
                 
                 new_jobs += 1
-                title_disp = utils.truncate(job['title'], 50)
                 
                 kw_disp = utils.truncate(job['keyword'], 20)
                 if job['negative_keyword']:
                     kw_disp += f" (Neg: {utils.truncate(job['negative_keyword'], 10)})"
                 
-                # Build progress string without carriage returns for the web UI
-                progress = int(50 * (i + 1) / total_jobs) if total_jobs > 0 else 0
-                bar = "█" * progress + "-" * (50 - progress)
-                
-                log_msg = f"  -> NEW Match: {job['date']:>12} | {kw_disp:<35} | {title_disp}\n"
-                log_msg += f"  -> Progress: [{bar}] {i+1}/{total_jobs}"
+                log_msg = f"  -> NEW Match: {title_disp} | {i+1}/{total_jobs}"
                 
                 emit_log(log_msg, log_queue)
                 
