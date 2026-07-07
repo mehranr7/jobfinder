@@ -11,6 +11,32 @@
     data-url="{{ job.link }}" data-date="{{ job.date_of_release }}">
     <h2 class="job-title"><a href="{{ job.link }}" target="_blank" class="title-link">{{ job.title }}</a></h2>
     <div class="job-meta">
+        <span class="meta-item">
+            {% if job.eval_score is not none %}
+                {% set eval_color = 'green' if job.eval_score >= 70 else ('yellow' if job.eval_score >= 40 else 'red') %}
+                <span class="eval-badge eval-{{ eval_color }}" 
+                      data-reason="{{ job.eval_reason or '' }}"
+                      onclick="openEvalModal(this.getAttribute('data-reason'))" 
+                      title="Click to read AI reasoning">✨ Match: {{ job.eval_score }}%</span>
+                
+                {% if job.selected_cv %}
+                    <span class="keyword-badge" title="Best CV Match" style="background-color: #34495e; color: white;">📄 {{ job.selected_cv }}</span>
+                {% endif %}
+                
+                {% if job.cover_letter %}
+                    <button class="eval-badge eval-green" style="background: linear-gradient(135deg, #3498db, #2980b9); border: none; font-size: inherit; font-family: inherit;" 
+                          data-letter="{{ (job.cover_letter or '')|escape }}"
+                          onclick="copyCoverLetterDirectly(this)" 
+                          title="Click to copy Cover Letter">📋 Cover Letter</button>
+                {% endif %}
+                
+            {% elif (job.status or 'Unseen') == 'Unseen' %}
+                <!-- Blurred Placeholders for Evaluating Jobs -->
+                <span class="eval-badge eval-green blurred-eval loading-blink">✨ Match: 100%</span>
+                <span class="keyword-badge blurred-eval loading-blink" style="background-color: #34495e; color: white;">📄 Software</span>
+                <button class="eval-badge eval-green blurred-eval loading-blink" style="background: linear-gradient(135deg, #3498db, #2980b9); border: none;">📋 Cover Letter</button>
+            {% endif %}
+        </span>
         <span class="meta-item">🏢 <strong>{{ job.company }}</strong></span>
         <span class="meta-item">🕒 {{ job.date_of_release | timeago }}</span>
         <span class="meta-item">

@@ -139,6 +139,39 @@ def stop_scraper():
     scraper.current_state = scraper.STATE_STOPPED
     return jsonify({"success": True})
 
+# --- EVALUATOR API ---
+
+# Global queue for SSE, cleared periodically or capped
+evaluator_log_queues = []
+
+def broadcast_eval_log(msg):
+    print(msg, flush=True)
+    # Send to all connected UI clients
+    dead_queues = []
+    for q in evaluator_log_queues:
+        try:
+            q.put_nowait(msg)
+        except queue.Full:
+            dead_queues.append(q)
+    for q in dead_queues:
+        if q in evaluator_log_queues:
+            evaluator_log_queues.remove(q)
+
+@app.route('/api/eval_stream')
+def eval_stream():
+    def generate():
+        q = queue.Queue(maxsize=100)
+        evaluator_log_queues.append(q)
+        try:
+            while True:
+                msg = q.get()
+                formatted_msg = msg.replace('\n', '<br>')
+                yield f"data: {formatted_msg}\n\n"
+        except GeneratorExit:
+            if q in evaluator_log_queues:
+                evaluator_log_queues.remove(q)
+    return Response(generate(), mimetype='text/event-stream')
+
 def get_port():
     try:
         with open("config.yml", "r", encoding="utf-8") as f:
@@ -147,9 +180,15 @@ def get_port():
     except Exception:
         return 5050
 
+import evaluator
+
 if __name__ == '__main__':
     # Initialize DB on startup
     database.init_db()
+    
+    # Start Evaluator Daemon
+    eval_thread = threading.Thread(target=evaluator.main_loop, args=(broadcast_eval_log,), daemon=True)
+    eval_thread.start()
     
     port = get_port()
     print("\n" + "="*50)

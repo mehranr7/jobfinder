@@ -7,6 +7,12 @@ special_keyword_threshold: 3
 # API Keys
 gemini_api_key: "YOUR_GEMINI_API_KEY_HERE"
 
+# Evaluator Settings
+evaluator_model: "gemini-2.5-flash"
+evaluator_delay_s: 15
+cv_paths:
+  - "cvs/my_cv.pdf"
+  
 stellenwerk_link: "https://www.stellenwerk.de/hamburg"
 stellenwerk_pages: 6
 

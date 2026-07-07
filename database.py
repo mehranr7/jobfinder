@@ -62,6 +62,26 @@ def init_db():
     except sqlite3.OperationalError:
         pass # Column already exists
 
+    try:
+        c.execute('ALTER TABLE jobs ADD COLUMN eval_score INTEGER DEFAULT NULL')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
+    try:
+        c.execute('ALTER TABLE jobs ADD COLUMN eval_reason TEXT DEFAULT ""')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
+    try:
+        c.execute('ALTER TABLE jobs ADD COLUMN selected_cv TEXT DEFAULT ""')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
+    try:
+        c.execute('ALTER TABLE jobs ADD COLUMN cover_letter TEXT DEFAULT ""')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
     conn.commit()
     conn.close()
 
@@ -135,6 +155,13 @@ def update_job_note(link, note):
     conn = get_connection()
     c = conn.cursor()
     c.execute('UPDATE jobs SET note = ? WHERE link = ?', (note, link))
+    conn.commit()
+    conn.close()
+
+def update_job_eval(link, eval_score, eval_reason, selected_cv="", cover_letter=""):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('UPDATE jobs SET eval_score = ?, eval_reason = ?, selected_cv = ?, cover_letter = ? WHERE link = ?', (eval_score, eval_reason, selected_cv, cover_letter, link))
     conn.commit()
     conn.close()
 

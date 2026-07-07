@@ -28,6 +28,10 @@ A powerful, containerized web application built with Python, Flask, and Playwrig
    cp config.example.yml config.yml
    ```
    Open `config.yml` in your editor and enter your `gemini_api_key`, along with any target keywords.
+   
+   **LLM Evaluation Setup:** 
+   - Place your PDF CVs into the `cvs/` directory and ensure their names match the ones in `config.yml`.
+   - Create a file named `llm_instruction.txt` in the root directory and write your custom prompt/rules for the LLM inside it.
 3. **Start the application with Docker:**
    ```bash
    docker compose up --build

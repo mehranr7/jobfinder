@@ -18,3 +18,5 @@ jobs.db
 
 # Config and local files
 config.yml
+cvs/
+llm_instruction.txt

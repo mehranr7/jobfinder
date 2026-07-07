@@ -159,7 +159,35 @@ function openNoteModal(link) {
 }
 
 function closeNoteModal() {
-    document.getElementById('noteModal').style.display = 'none';
+    document.getElementById("noteModal").style.display = "none";
+    document.getElementById("noteTextarea").value = "";
+    document.getElementById("noteJobLink").value = "";
+}
+
+function openEvalModal(reason) {
+    document.getElementById("evalReasonText").innerText = reason || "No reasoning provided by Gemini.";
+    document.getElementById("evalModal").style.display = "flex";
+}
+
+function copyCoverLetterDirectly(btn) {
+    if (btn.disabled) return;
+    
+    // Replace escaped newlines with actual newlines
+    let letter = btn.getAttribute('data-letter') || "";
+    letter = letter.replace(/\\n/g, '\n');
+    
+    navigator.clipboard.writeText(letter).then(() => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "✅ Copied!";
+        btn.disabled = true;
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        alert("Failed to copy Cover Letter to clipboard.");
+    });
 }
 
 function saveNote() {
@@ -439,11 +467,14 @@ function runScraper() {
             resetButtons();
             termOut.innerHTML += '\nScraper finished.\n';
         } else {
-            termOut.innerHTML += event.data + '\n';
-            termWrapper.scrollTop = termWrapper.scrollHeight;
+            // Don't print internal signals to the UI terminal
+            if (!event.data.includes("-> UI_RELOAD")) {
+                termOut.innerHTML += event.data + '\n';
+                termWrapper.scrollTop = termWrapper.scrollHeight;
+            }
 
-            // If a new job was matched, fetch the updated job list and total count
-            if (event.data.includes("NEW Match")) {
+            // If a new job was safely saved to DB, fetch the updated job list and total count
+            if (event.data.includes("-> UI_RELOAD")) {
                 fetchLatestJobs();
             }
         }
@@ -503,18 +534,41 @@ function fetchLatestJobs() {
         .catch(err => console.error("Error fetching latest jobs:", err));
 }
 
-function toggleTerminal() {
-    const wrapper = document.getElementById('terminalOutputWrapper');
-    const btn = document.getElementById('terminalToggleBtn');
-    if (wrapper.style.display === 'none') {
-        wrapper.style.display = 'block';
-        btn.innerText = '▼';
+function toggleTerminal(wrapperId) {
+    const wrapper = document.getElementById(wrapperId);
+    if (wrapper.style.display === "none") {
+        wrapper.style.display = "block";
     } else {
-        wrapper.style.display = 'none';
-        btn.innerText = '▲';
+        wrapper.style.display = "none";
     }
 }
 
+// --- EVALUATOR TERMINAL ---
+function setupEvalTerminal() {
+    const evalEventSource = new EventSource("/api/eval_stream");
+    const evalTerminal = document.getElementById("evalTerminalOutput");
+    
+    evalEventSource.onmessage = function (event) {
+        if (evalTerminal.innerHTML === "Waiting for jobs to evaluate...") {
+            evalTerminal.innerHTML = "";
+        }
+        evalTerminal.innerHTML += event.data + "<br>";
+        evalTerminal.parentElement.scrollTop = evalTerminal.parentElement.scrollHeight;
+
+        if (event.data.includes("-> Score:")) {
+            fetchLatestJobs();
+        }
+    };
+    
+    evalEventSource.onerror = function() {
+        console.log("Evaluator stream disconnected. Reconnecting in 5s...");
+        evalEventSource.close();
+        setTimeout(setupEvalTerminal, 5000);
+    };
+}
+setupEvalTerminal();
+
+// --- SCRAPER TERMINAL ---
 function populateDropdowns() {
     // Populate the keyword dropdowns
     const keywords = new Set();

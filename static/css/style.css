@@ -507,3 +507,55 @@ button {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
 }
+
+/* --- Evaluation Badges --- */
+.eval-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    margin-right: 5px;
+    color: white;
+}
+.eval-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+.eval-green { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+.eval-yellow { background: linear-gradient(135deg, #f39c12, #f1c40f); }
+.eval-red { background: linear-gradient(135deg, #c0392b, #e74c3c); }
+
+.eval-loading {
+    background: linear-gradient(90deg, #95a5a6, #bdc3c7, #95a5a6);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+    color: transparent;
+    text-shadow: 0 0 5px rgba(255,255,255,0.8);
+    cursor: wait;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* UI Placeholders for Evaluating Jobs */
+.blurred-eval {
+    filter: blur(4px);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.7;
+}
+
+@keyframes blink-loading {
+    0% { opacity: 0.3; }
+    50% { opacity: 1.0; }
+    100% { opacity: 0.3; }
+}
+
+.loading-blink {
+    animation: blink-loading 1.5s infinite ease-in-out;
+}

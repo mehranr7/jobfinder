@@ -371,6 +371,7 @@ def main(log_queue=None):
                     
                 # Insert into DB
                 database.insert_job(job)
+                emit_log(f"  -> UI_RELOAD", log_queue)
                 
                 # Slight delay between deep scrapes to avoid getting blocked
                 page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
