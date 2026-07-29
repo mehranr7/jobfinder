@@ -268,11 +268,19 @@ function filterJobs() {
 
     const selectedKws = Array.from(document.querySelectorAll('.kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
     const selectedNegKws = Array.from(document.querySelectorAll('.neg-kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
+    const selectedCompanies = Array.from(document.querySelectorAll('.company-checkbox:checked')).map(cb => cb.value.toLowerCase());
+    const selectedPlatforms = Array.from(document.querySelectorAll('.platform-checkbox:checked')).map(cb => cb.value.toLowerCase());
     const selectedDescTags = Array.from(document.querySelectorAll('.desc-tag-checkbox:checked')).map(cb => cb.value.toLowerCase());
     const selectedNegDescTags = Array.from(document.querySelectorAll('.neg-desc-tag-checkbox:checked')).map(cb => cb.value.toLowerCase());
 
     const kwTitle = document.getElementById('keywordSelectTitle');
     if (kwTitle) kwTitle.innerText = selectedKws.length > 0 ? `${selectedKws.length} Selected` : 'All Keywords';
+
+    const companyTitle = document.getElementById('companySelectTitle');
+    if (companyTitle) companyTitle.innerText = selectedCompanies.length > 0 ? `${selectedCompanies.length} Selected` : 'All Companies';
+
+    const platformTitle = document.getElementById('platformSelectTitle');
+    if (platformTitle) platformTitle.innerText = selectedPlatforms.length > 0 ? `${selectedPlatforms.length} Selected` : 'All Platforms';
 
     const negKwTitle = document.getElementById('negKeywordSelectTitle');
     if (negKwTitle) negKwTitle.innerText = selectedNegKws.length > 0 ? `${selectedNegKws.length} Selected` : 'All Negative Keywords';
@@ -289,6 +297,8 @@ function filterJobs() {
     window.filteredCards = window.jobCards.filter(card => {
         const title = card.getAttribute('data-title');
         const kws = card.getAttribute('data-keyword').toLowerCase();
+        const company = (card.getAttribute('data-company') || "").toLowerCase();
+        const platform = (card.getAttribute('data-platform') || "").toLowerCase();
         const status = card.getAttribute('data-status') || "Unseen";
 
         const posKwsList = card.getAttribute('data-pos-keyword').split(',').map(s => s.trim());
@@ -296,8 +306,10 @@ function filterJobs() {
         const descTagsList = (card.getAttribute('data-desc-tags') || "").split(',').map(s => s.trim());
         const negDescTagsList = (card.getAttribute('data-neg-desc-tags') || "").split(',').map(s => s.trim());
 
-        let matchesText = title.includes(textFilter) || kws.includes(textFilter);
+        let matchesText = title.includes(textFilter) || kws.includes(textFilter) || company.includes(textFilter) || platform.includes(textFilter);
         let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => posKwsList.includes(kw));
+        let matchesCompany = selectedCompanies.length === 0 || selectedCompanies.includes(company);
+        let matchesPlatform = selectedPlatforms.length === 0 || selectedPlatforms.includes(platform);
         let matchesNegKeyword = selectedNegKws.length === 0 || selectedNegKws.some(kw => negKwsList.includes(kw));
         let matchesDescTag = selectedDescTags.length === 0 || selectedDescTags.some(tag => descTagsList.includes(tag));
         let matchesNegDescTag = selectedNegDescTags.length === 0 || selectedNegDescTags.some(tag => negDescTagsList.includes(tag));
@@ -307,7 +319,7 @@ function filterJobs() {
             matchesStatus = (status === statusFilter);
         }
 
-        return matchesText && matchesKeyword && matchesNegKeyword && matchesDescTag && matchesNegDescTag && matchesStatus;
+        return matchesText && matchesKeyword && matchesCompany && matchesPlatform && matchesNegKeyword && matchesDescTag && matchesNegDescTag && matchesStatus;
     });
 
     applySortAndRender(true);
@@ -390,6 +402,16 @@ function sortJobs() {
 
 function clearSearch() {
     document.getElementById('searchInput').value = '';
+    filterJobs();
+}
+
+function clearCompany() {
+    document.querySelectorAll('.company-checkbox').forEach(cb => cb.checked = false);
+    filterJobs();
+}
+
+function clearPlatform() {
+    document.querySelectorAll('.platform-checkbox').forEach(cb => cb.checked = false);
     filterJobs();
 }
 
@@ -570,6 +592,61 @@ setupEvalTerminal();
 
 // --- SCRAPER TERMINAL ---
 function populateDropdowns() {
+    // Populate Company dropdown
+    const companies = new Set();
+    const platforms = new Set();
+    window.jobCards.forEach(card => {
+        const comp = card.getAttribute('data-company');
+        if (comp && comp.trim()) companies.add(comp.trim().toLowerCase());
+        
+        const plat = card.getAttribute('data-platform');
+        if (plat && plat.trim()) platforms.add(plat.trim().toLowerCase());
+    });
+
+    const companyDropdown = document.getElementById('companyDropdown');
+    if (companyDropdown) {
+        companyDropdown.innerHTML = '';
+        Array.from(companies).sort().forEach(comp => {
+            const label = document.createElement('label');
+            label.style.display = 'block';
+            label.style.marginBottom = '5px';
+            label.style.cursor = 'pointer';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = comp;
+            checkbox.className = 'company-checkbox';
+            checkbox.style.marginRight = '8px';
+            checkbox.onchange = filterJobs;
+            label.appendChild(checkbox);
+            
+            const displayComp = comp.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            label.appendChild(document.createTextNode(displayComp));
+            companyDropdown.appendChild(label);
+        });
+    }
+
+    const platformDropdown = document.getElementById('platformDropdown');
+    if (platformDropdown) {
+        platformDropdown.innerHTML = '';
+        Array.from(platforms).sort().forEach(plat => {
+            const label = document.createElement('label');
+            label.style.display = 'block';
+            label.style.marginBottom = '5px';
+            label.style.cursor = 'pointer';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = plat;
+            checkbox.className = 'platform-checkbox';
+            checkbox.style.marginRight = '8px';
+            checkbox.onchange = filterJobs;
+            label.appendChild(checkbox);
+            
+            const displayPlat = plat.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            label.appendChild(document.createTextNode(displayPlat));
+            platformDropdown.appendChild(label);
+        });
+    }
+
     // Populate the keyword dropdowns
     const keywords = new Set();
     const negKeywords = new Set();

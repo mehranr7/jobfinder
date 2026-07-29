@@ -18,6 +18,7 @@ def init_db():
             link TEXT PRIMARY KEY,
             title TEXT,
             company TEXT,
+            platform TEXT,
             date_of_release TEXT,
             keywords TEXT,
             negative_keywords TEXT,
@@ -54,6 +55,11 @@ def init_db():
 
     try:
         c.execute('ALTER TABLE jobs ADD COLUMN app_state TEXT DEFAULT "None"')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
+    try:
+        c.execute('ALTER TABLE jobs ADD COLUMN platform TEXT DEFAULT ""')
     except sqlite3.OperationalError:
         pass # Column already exists
 
@@ -98,12 +104,13 @@ def insert_job(job_dict):
     c = conn.cursor()
     try:
         c.execute('''
-            INSERT INTO jobs (link, title, company, date_of_release, keywords, negative_keywords, description, description_tags, neg_description_tags, status, cv_type, app_state, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO jobs (link, title, company, platform, date_of_release, keywords, negative_keywords, description, description_tags, neg_description_tags, status, cv_type, app_state, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             job_dict.get('link'),
             job_dict.get('title'),
             job_dict.get('company', 'Unknown'),
+            job_dict.get('platform', ''),
             job_dict.get('date', 'Unknown'),
             job_dict.get('keyword', ''),
             job_dict.get('negative_keyword', ''),

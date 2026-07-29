@@ -76,6 +76,30 @@
                 </select>
             </div>
             <div class="control-group">
+                <div class="multi-select" id="companySelectContainer">
+                    <div class="select-box" onclick="toggleDropdown('companyDropdown')">
+                        <span id="companySelectTitle" class="truncate-text">All Companies</span> 
+                        <span class="dropdown-caret">▼</span>
+                    </div>
+                    <div class="dropdown-content" id="companyDropdown">
+                        <!-- Checkboxes injected by JS -->
+                    </div>
+                </div>
+                <button class="clear-icon-btn" onclick="clearCompany()" title="Clear Companies">⟲</button>
+            </div>
+            <div class="control-group">
+                <div class="multi-select" id="platformSelectContainer">
+                    <div class="select-box" onclick="toggleDropdown('platformDropdown')">
+                        <span id="platformSelectTitle" class="truncate-text">All Platforms</span> 
+                        <span class="dropdown-caret">▼</span>
+                    </div>
+                    <div class="dropdown-content" id="platformDropdown">
+                        <!-- Checkboxes injected by JS -->
+                    </div>
+                </div>
+                <button class="clear-icon-btn" onclick="clearPlatform()" title="Clear Platforms">⟲</button>
+            </div>
+            <div class="control-group">
                 <div class="multi-select" id="keywordSelectContainer">
                     <div class="select-box" onclick="toggleDropdown('keywordDropdown')">
                         <span id="keywordSelectTitle" class="truncate-text">All Keywords</span> 

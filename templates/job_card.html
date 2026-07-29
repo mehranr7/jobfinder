@@ -8,6 +8,7 @@
     data-status="{{ job.status or 'Unseen' }}" data-title="{{ job.title|lower }}" data-keyword="{{ data_kws }}"
     data-pos-keyword="{{ pos_kws|join(',')|lower }}" data-neg-keyword="{{ neg_kws|join(',')|lower }}"
     data-desc-tags="{{ desc_tags|join(',')|lower }}" data-neg-desc-tags="{{ neg_desc_tags|join(',')|lower }}"
+    data-company="{{ job.company|lower }}" data-platform="{{ job.platform|lower }}"
     data-url="{{ job.link }}" data-date="{{ job.date_of_release }}">
     <h2 class="job-title"><a href="{{ job.link }}" target="_blank" class="title-link">{{ job.title }}</a></h2>
     <div class="job-meta">
@@ -37,8 +38,18 @@
                 <button class="eval-badge eval-green blurred-eval loading-blink" style="background: linear-gradient(135deg, #3498db, #2980b9); border: none;">📋 Cover Letter</button>
             {% endif %}
         </span>
-        <span class="meta-item">🏢 <strong>{{ job.company }}</strong></span>
-        <span class="meta-item">🕒 {{ job.date_of_release | timeago }}</span>
+        <span class="meta-item">
+            <span class="icon">🏢</span> <span class="company-name">{{ job.company|default('Unknown', true) }}</span>
+        </span>
+        {% if job.platform %}
+        <span class="meta-item">
+            <span class="icon">🌐</span> <span class="platform-name">{{ job.platform }}</span>
+        </span>
+        {% endif %}
+        <span class="meta-item">
+            <span class="icon">📅</span> 
+            <span class="date-text" title="{{ job.date_of_release }}">{{ job.date_of_release | timeago }}</span>
+        </span>
         <span class="meta-item">
             {% set pos_clean = pos_kws | reject('eq', '') | list %}
             {% if pos_clean %} <span class="count-badge pos-count" title="Positive Keywords">{{ pos_clean|length }}</span> {% endif %}

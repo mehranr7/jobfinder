@@ -170,8 +170,19 @@ def main_loop(log_queue=None):
                 
                 try:
                     response = model.generate_content(prompt)
-                    # Parse JSON
                     res_text = response.text.strip()
+                    
+                    # Parse JSON and strip markdown backticks
+                    res_text = response.text.strip()
+                    if res_text.startswith("```json"):
+                        res_text = res_text[7:]
+                    elif res_text.startswith("```"):
+                        res_text = res_text[3:]
+                        
+                    if res_text.endswith("```"):
+                        res_text = res_text[:-3]
+                        
+                    res_text = res_text.strip()
                     
                     # Defensively fix truncated JSON (missing closing braces)
                     if not res_text.endswith("}"):
@@ -181,7 +192,15 @@ def main_loop(log_queue=None):
                         
                     emit_log(f"Gemini raw response: {res_text}", log_queue)
                     
-                    data = json.loads(res_text)
+                    try:
+                        data = json.loads(res_text)
+                    except json.JSONDecodeError:
+                        # Fallback: find the JSON block using regex if basic stripping failed
+                        import re
+                        match = re.search(r'\{.*\}', res_text, re.DOTALL)
+                        if match:
+                            res_text = match.group(0)
+                        data = json.loads(res_text)
                     score = data.get("eval_score", 0)
                     reason = data.get("eval_reason", "No reason provided.")
                     selected_cv = data.get("selected_cv", "")
@@ -200,7 +219,10 @@ def main_loop(log_queue=None):
                     database.update_job_eval(job['link'], 0, "Error: Invalid JSON response from Gemini.")
                 except Exception as e:
                     emit_log(f"[!] Evaluation failed: {e}", log_queue)
-                    
+                    if "429" in str(e) or "Quota" in str(e):
+                        emit_log(f"[!] Rate limit or quota exceeded. Sleeping for 60 seconds before retrying...", log_queue)
+                        time.sleep(60)
+                        break # Break inner loop, fetch jobs again after sleep
                 # Rate limit cooldown
                 emit_log(f"Cooldown: Waiting {delay_s}s for rate limits...", log_queue)
                 time.sleep(delay_s)

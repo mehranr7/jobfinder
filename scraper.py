@@ -137,6 +137,13 @@ def scrape_stellenwerk(page, url):
             
         card_text = a_tag.get_text(separator=' ', strip=True)
         
+        company = "Stellenwerk"
+        building_svg = a_tag.find("svg", class_=re.compile("lucide-building-2"))
+        if building_svg and building_svg.parent:
+            company_text = building_svg.parent.get_text(strip=True)
+            if company_text:
+                company = company_text
+                
         matched_keywords = []
         for kw in KEYWORDS:
             if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
@@ -152,7 +159,8 @@ def scrape_stellenwerk(page, url):
                 "title": title,
                 "date": date,
                 "link": job_link,
-                "company": "Stellenwerk",
+                "company": company,
+                "platform": "Stellenwerk",
                 "keyword": ", ".join(matched_keywords),
                 "negative_keyword": ", ".join(matched_negative_keywords),
                 "preview_text": card_text
@@ -200,23 +208,29 @@ def scrape_stepstone(page, url):
                 elif h2.parent.name == "a":
                     job_a_tag = h2.parent
                     
-        # Last resort: take the first link
-        if not job_a_tag:
-            job_a_tag = article.find("a", href=True)
-            
         if not job_a_tag:
             continue
             
         h2 = article.find("h2")
         title = h2.get_text(strip=True) if h2 else job_a_tag.get_text(strip=True)
         
-        job_link = urljoin(url, job_a_tag["href"])
+        raw_link = urljoin(url, job_a_tag["href"])
+        job_link = raw_link.split('?')[0]
         
         time_tag = article.find("time")
         date_raw = time_tag.get_text(strip=True) if time_tag else "Unknown"
         date = utils.parse_relative_date(date_raw)
         
         card_text = article.get_text(separator=' ', strip=True)
+        if not card_text:
+            continue
+            
+        company_tag = article.find(attrs={"data-at": "job-item-company-name"})
+        if not company_tag:
+            continue
+            
+        company_text = company_tag.get_text(strip=True)
+        company = company_text if company_text else "Stepstone"
         
         matched_keywords = []
         for kw in KEYWORDS:
@@ -233,7 +247,8 @@ def scrape_stepstone(page, url):
                 "title": title,
                 "date": date,
                 "link": job_link,
-                "company": "Stepstone",
+                "company": company,
+                "platform": "Stepstone",
                 "keyword": ", ".join(matched_keywords),
                 "negative_keyword": ", ".join(matched_negative_keywords),
                 "preview_text": card_text

@@ -13,10 +13,10 @@ evaluator_delay_s: 15
 cv_paths:
   - "cvs/my_cv.pdf"
   
-stellenwerk_link: "https://www.stellenwerk.de/hamburg"
+stellenwerk_link: "https://www.stellenwerk.de/CITY"
 stellenwerk_pages: 2
 
-stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?xx-filters-xx"
+stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?xx-FILTERS-xx"
 stepstone_pages: 1
 keywords:
   - "Werkstudent"
