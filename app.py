@@ -139,6 +139,32 @@ def stop_scraper():
     scraper.current_state = scraper.STATE_STOPPED
     return jsonify({"success": True})
 
+@app.route('/api/pause_evaluator', methods=['POST'])
+def pause_evaluator():
+    evaluator.current_state = evaluator.STATE_PAUSED
+    return jsonify({"success": True})
+
+@app.route('/api/resume_evaluator', methods=['POST'])
+def resume_evaluator():
+    evaluator.current_state = evaluator.STATE_RUNNING
+    return jsonify({"success": True})
+
+@app.route('/api/evaluate_job', methods=['POST'])
+def evaluate_job():
+    data = request.get_json()
+    link = data.get('link')
+    if not link:
+        return jsonify({'error': 'Missing link'}), 400
+    
+    # Run evaluation asynchronously so we don't block the UI
+    def run_eval():
+        evaluator.evaluate_job_by_link(link, broadcast_eval_log)
+        # We don't notify the UI directly here to refresh, but the eval terminal stream
+        # will print "-> Score: " which triggers a UI refresh anyway!
+        
+    threading.Thread(target=run_eval).start()
+    return jsonify({'success': True})
+
 # --- EVALUATOR API ---
 
 # Global queue for SSE, cleared periodically or capped

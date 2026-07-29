@@ -590,6 +590,54 @@ function setupEvalTerminal() {
 }
 setupEvalTerminal();
 
+function pauseEvaluator() {
+    fetch('/api/pause_evaluator', { method: 'POST' })
+        .then(() => {
+            document.getElementById('pauseEvalBtn').style.display = 'none';
+            document.getElementById('resumeEvalBtn').style.display = 'inline-block';
+        });
+}
+
+function resumeEvaluator() {
+    fetch('/api/resume_evaluator', { method: 'POST' })
+        .then(() => {
+            document.getElementById('resumeEvalBtn').style.display = 'none';
+            document.getElementById('pauseEvalBtn').style.display = 'inline-block';
+        });
+}
+
+function evaluateJob(btn, link) {
+    if (btn.disabled) return;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = "⏳ Evaluating...";
+    btn.disabled = true;
+
+    fetch('/api/evaluate_job', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ link: link })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.success) {
+            // Let the SSE terminal handle the refresh once evaluation is fully complete
+            // We just leave the button in the loading state for now
+        } else {
+            alert("Failed to queue evaluation.");
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error("Error evaluating job:", error);
+        alert("Failed to evaluate job due to network error.");
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
 // --- SCRAPER TERMINAL ---
 function populateDropdowns() {
     // Populate Company dropdown

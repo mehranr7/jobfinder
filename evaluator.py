@@ -235,6 +235,92 @@ def main_loop(log_queue=None):
     if log_queue is not None:
         log_queue.put("DONE")
 
+def evaluate_job_by_link(link, log_queue=None):
+    config = load_config()
+    api_key = config.get("gemini_api_key", "")
+    if not api_key or api_key == "YOUR_GEMINI_API_KEY_HERE":
+        emit_log("[!] Gemini API key not set.", log_queue)
+        return False
+    genai.configure(api_key=api_key)
+    model_name = config.get("evaluator_model", "gemini-1.5-flash")
+    if not os.path.exists("llm_instruction.txt"):
+        with open("llm_instruction.txt", "w", encoding="utf-8") as f:
+            f.write('You are an expert HR recruiter evaluating a job match. Analyze the job description against my CVs. Return JSON with "eval_score" (0-100) and "eval_reason" (1-3 sentences).')
+    with open("llm_instruction.txt", "r", encoding="utf-8") as f:
+        instruction_text = f.read()
+    cv_paths = config.get("cv_paths", [])
+    gemini_cvs = get_uploaded_cvs(cv_paths, log_queue) if cv_paths else []
+    model = genai.GenerativeModel(
+        model_name,
+        system_instruction=instruction_text,
+        generation_config={"response_mime_type": "application/json", "max_output_tokens": 8192}
+    )
+    conn = database.get_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM jobs WHERE link = ?", (link,))
+    job_row = c.fetchone()
+    conn.close()
+    if not job_row:
+        return False
+    job = dict(job_row)
+    emit_log(f"\nManually Evaluating: {job['title']}...", log_queue)
+    
+    job_details = f"Job Title: {job['title']}\nCompany: {job['company']}\n\n"
+    pos_kws = job.get('keywords') or ""
+    neg_kws = job.get('negative_keywords') or ""
+    if pos_kws:
+        job_details += f"Matched Positive Keywords: {pos_kws}\n"
+    if neg_kws:
+        job_details += f"Matched Negative Keywords: {neg_kws}\n"
+    pos_desc = job.get('description_tags') or ""
+    neg_desc = job.get('neg_description_tags') or ""
+    if pos_desc:
+        job_details += f"Matched Positive Description Tags: {pos_desc}\n"
+    if neg_desc:
+        job_details += f"Matched Negative Description Tags: {neg_desc}\n"
+    job_details += f"\nJob Description:\n{job['description']}"
+    
+    prompt = [job_details]
+    prompt.extend(gemini_cvs)
+    
+    try:
+        response = model.generate_content(prompt)
+        res_text = response.text.strip()
+        if res_text.startswith("```json"):
+            res_text = res_text[7:]
+        elif res_text.startswith("```"):
+            res_text = res_text[3:]
+        if res_text.endswith("```"):
+            res_text = res_text[:-3]
+        res_text = res_text.strip()
+        if not res_text.endswith("}"):
+            if not res_text.endswith('"'):
+                res_text += '"'
+            res_text += "\n}"
+            
+        import json
+        try:
+            data = json.loads(res_text)
+        except json.JSONDecodeError:
+            import re
+            match = re.search(r'\{.*\}', res_text, re.DOTALL)
+            if match:
+                res_text = match.group(0)
+            data = json.loads(res_text)
+            
+        score = data.get("eval_score", 0)
+        reason = data.get("eval_reason", "No reason provided.")
+        selected_cv = data.get("selected_cv", "")
+        cover_letter = data.get("cover_letter", "")
+        score = max(0, min(100, int(score)))
+        
+        database.update_job_eval(job['link'], score, reason, selected_cv, cover_letter)
+        emit_log(f"  -> Score: {score}/100, Best CV: {selected_cv}", log_queue)
+        return True
+    except Exception as e:
+        emit_log(f"[!] Manual evaluation failed: {e}", log_queue)
+        return False
+
 def run(log_queue=None):
     main_loop(log_queue)
 

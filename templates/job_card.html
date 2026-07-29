@@ -31,11 +31,16 @@
                           title="Click to copy Cover Letter">📋 Cover Letter</button>
                 {% endif %}
                 
-            {% elif (job.status or 'Unseen') == 'Unseen' %}
-                <!-- Blurred Placeholders for Evaluating Jobs -->
-                <span class="eval-badge eval-green blurred-eval loading-blink">✨ Match: 100%</span>
-                <span class="keyword-badge blurred-eval loading-blink" style="background-color: #34495e; color: white;">📄 Software</span>
-                <button class="eval-badge eval-green blurred-eval loading-blink" style="background: linear-gradient(135deg, #3498db, #2980b9); border: none;">📋 Cover Letter</button>
+            {% else %}
+                <button class="eval-badge eval-yellow" style="border: none; font-size: inherit; font-family: inherit;" 
+                      onclick="evaluateJob(this, '{{ job.link }}')" 
+                      title="Click to manually evaluate this job">✨ Evaluate</button>
+                {% if (job.status or 'Unseen') == 'Unseen' %}
+                    <!-- Blurred Placeholders for Evaluating Jobs -->
+                    <span class="eval-badge eval-green blurred-eval loading-blink">✨ Match: 100%</span>
+                    <span class="keyword-badge blurred-eval loading-blink" style="background-color: #34495e; color: white;">📄 Software</span>
+                    <button class="eval-badge eval-green blurred-eval loading-blink" style="background: linear-gradient(135deg, #3498db, #2980b9); border: none;">📋 Cover Letter</button>
+                {% endif %}
             {% endif %}
         </span>
         <span class="meta-item">
