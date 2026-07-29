@@ -80,7 +80,7 @@
                 {% endfor %}
             </select>
             | State:
-            <select class="app-state-select" onchange="changeAppState(this, '{{ job.link }}')" style="padding: 2px 4px; font-size: 12px;">
+            <select class="cv-select app-state-select" onchange="changeAppState(this, '{{ job.link }}')">
             {% for state in app_states %}
                 <option value="{{ state }}" {% if (job.app_state or 'Not Applied') == state %}selected{% endif %}>{{ state }}</option>
             {% endfor %}
