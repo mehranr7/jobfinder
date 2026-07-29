@@ -178,3 +178,22 @@ def delete_job(link):
     c.execute('DELETE FROM jobs WHERE link = ?', (link,))
     conn.commit()
     conn.close()
+
+def get_jobs_by_links(links):
+    if not links:
+        return []
+    conn = get_connection()
+    c = conn.cursor()
+    placeholders = ','.join('?' * len(links))
+    # Preserve the original order of the links array!
+    # SQLite has no ORDER BY FIELD, so we will sort them in Python
+    c.execute(f'SELECT * FROM jobs WHERE link IN ({placeholders})', links)
+    rows = c.fetchall()
+    conn.close()
+    
+    # Convert to dicts
+    jobs = [dict(r) for r in rows]
+    # Sort them according to the input links list to preserve frontend sorting
+    job_map = {j['link']: j for j in jobs}
+    sorted_jobs = [job_map[l] for l in links if l in job_map]
+    return sorted_jobs

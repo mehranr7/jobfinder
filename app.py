@@ -4,6 +4,8 @@ import database
 import scraper
 import threading
 import queue
+import csv
+import io
 
 import utils
 
@@ -99,6 +101,48 @@ def delete_job():
         
     database.delete_job(link)
     return jsonify({'success': True, 'link': link})
+
+@app.route('/api/export_csv', methods=['POST'])
+def export_csv():
+    data = request.get_json()
+    links = data.get('links', [])
+    
+    if not links:
+        return jsonify({'error': 'No links provided'}), 400
+        
+    jobs = database.get_jobs_by_links(links)
+    
+    # Create CSV in memory
+    si = io.StringIO()
+    # Define columns
+    fieldnames = [
+        'title', 'company', 'platform', 'status', 'app_state', 'cv_type', 'note',
+        'eval_score', 'eval_reason', 'selected_cv', 'cover_letter',
+        'keywords', 'negative_keywords', 'description_tags', 'neg_description_tags',
+        'date_of_release', 'discovered_at', 'link', 'description'
+    ]
+    
+    writer = csv.DictWriter(si, fieldnames=fieldnames, extrasaction='ignore')
+    writer.writeheader()
+    for job in jobs:
+        # Sanitize fields with newlines to prevent Excel/Numbers from cutting rows
+        sanitized_job = {}
+        for k, v in job.items():
+            if isinstance(v, str):
+                sanitized_job[k] = v.replace('\r\n', '  ').replace('\n', '  ').replace('\r', '  ')
+            else:
+                sanitized_job[k] = v
+        writer.writerow(sanitized_job)
+        
+    # Prepend UTF-8 BOM so Excel opens it correctly with all German characters
+    output = '\ufeff' + si.getvalue()
+    si.close()
+    
+    return Response(
+        output,
+        mimetype="text/csv; charset=utf-8-sig",
+        headers={"Content-Disposition": f"attachment;filename=JobFinder_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"}
+    )
 
 @app.route('/api/run_scraper')
 def run_scraper():

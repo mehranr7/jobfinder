@@ -638,6 +638,53 @@ function evaluateJob(btn, link) {
     });
 }
 
+function exportFilteredJobsToCSV() {
+    if (!window.filteredCards || window.filteredCards.length === 0) {
+        alert("No jobs to export! Please adjust your filters.");
+        return;
+    }
+    
+    // Extract the exact URLs of all currently filtered jobs
+    const links = window.filteredCards.map(card => card.getAttribute('data-url'));
+    
+    fetch('/api/export_csv', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ links: links })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Failed to export CSV from server.");
+        }
+        // Extract filename from headers if possible, otherwise use a fallback
+        let filename = "JobFinder_Report.csv";
+        const disposition = response.headers.get('Content-Disposition');
+        if (disposition && disposition.indexOf('filename=') !== -1) {
+            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+            if (matches != null && matches[1]) { 
+                filename = matches[1].replace(/['"]/g, '');
+            }
+        }
+        return response.blob().then(blob => ({ blob, filename }));
+    })
+    .then(({ blob, filename }) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(err => {
+        console.error("Export error:", err);
+        alert("An error occurred while exporting the report.");
+    });
+}
+
 // --- SCRAPER TERMINAL ---
 function populateDropdowns() {
     // Populate Company dropdown

@@ -153,7 +153,10 @@
             </div>
         </div>
 
-        <h3 id="jobCountDisplay">Total Offers: 0</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 id="jobCountDisplay" style="margin: 0;">Total Offers: 0</h3>
+            <button class="action-btn" onclick="exportFilteredJobsToCSV()" style="background-color: #27ae60; border-color: #27ae60;">📥 Export CSV</button>
+        </div>
 
         <div class="jobs-container">
             {% for job in jobs %}
