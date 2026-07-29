@@ -1,5 +1,17 @@
 port: 4567
 page_size: 20
+app_states:
+  - "Not Applied"
+  - "Applied"
+  - "Rejected"
+  - "Interview"
+  - "Offer"
+
+cv_types:
+  - "Software"
+  - "Hardware"
+  - "Data"
+  - "General"
 delay_min_ms: 1000
 delay_max_ms: 1500
 special_keyword_threshold: 3

@@ -72,20 +72,19 @@
             {% endfor %}
         </span>
         <span class="meta-item cv-selector-wrapper">
-            CV:
-            <select class="cv-select" onchange="changeCV(this, '{{ job.link }}')">
-                <option value="" {% if not job.cv_type %}selected{% endif %}>None</option>
-                <option value="Software" {% if job.cv_type=='Software' %}selected{% endif %}>Software</option>
-                <option value="AI" {% if job.cv_type=='AI' %}selected{% endif %}>AI</option>
-                <option value="General" {% if job.cv_type=='General' %}selected{% endif %}>General</option>
+           <div class="job-actions">
+            <select class="cv-select" onchange="changeCvType(this, '{{ job.link }}')">
+                <option value="" {% if not job.cv_type %}selected{% endif %}>Select CV...</option>
+                {% for cv in cv_types %}
+                    <option value="{{ cv }}" {% if job.cv_type == cv %}selected{% endif %}>{{ cv }} CV</option>
+                {% endfor %}
             </select>
             | State:
-            <select class="cv-select app-state-select" onchange="changeAppState(this, '{{ job.link }}')">
-                <option value="None" {% if job.app_state == 'None' or not job.app_state %}selected{% endif %}>None</option>
-                <option value="interviewing" {% if job.app_state == 'interviewing' %}selected{% endif %}>interviewing</option>
-                <option value="rejected" {% if job.app_state == 'rejected' %}selected{% endif %}>rejected</option>
-                <option value="accepted" {% if job.app_state == 'accepted' %}selected{% endif %}>accepted</option>
-            </select>
+            <select class="app-state-select" onchange="changeAppState(this, '{{ job.link }}')" style="padding: 2px 4px; font-size: 12px;">
+            {% for state in app_states %}
+                <option value="{{ state }}" {% if (job.app_state or 'Not Applied') == state %}selected{% endif %}>{{ state }}</option>
+            {% endfor %}
+        </select>
         </span>
     </div>
 

@@ -25,23 +25,30 @@ def get_special_threshold():
 def timeago_filter(dt_string):
     return utils.timeago_filter(dt_string)
 
+def get_config_options():
+    try:
+        with open("config.yml", "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        app_states = config.get("app_states", ["Not Applied", "Applied", "Rejected", "Interview", "Offer"])
+        cv_types = config.get("cv_types", ["Software", "Hardware", "Data", "General"])
+        page_size = config.get("page_size", 20)
+        return app_states, cv_types, page_size
+    except Exception:
+        return ["Not Applied", "Applied", "Rejected", "Interview", "Offer"], ["Software", "Hardware", "Data", "General"], 20
+
 @app.route('/')
 def index():
     jobs = database.get_all_jobs()
     threshold = get_special_threshold()
-    try:
-        with open("config.yml", "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        page_size = config.get("page_size", 20)
-    except Exception:
-        page_size = 20
-    return render_template('index.html', jobs=jobs, special_threshold=threshold, page_size=page_size)
+    app_states, cv_types, page_size = get_config_options()
+    return render_template('index.html', jobs=jobs, special_threshold=threshold, page_size=page_size, app_states=app_states, cv_types=cv_types)
 
 @app.route('/api/get_job_cards')
 def get_job_cards():
     jobs = database.get_all_jobs()
     threshold = get_special_threshold()
-    return render_template('job_cards.html', jobs=jobs, special_threshold=threshold)
+    app_states, cv_types, _ = get_config_options()
+    return render_template('job_cards.html', jobs=jobs, special_threshold=threshold, app_states=app_states, cv_types=cv_types)
 
 @app.route('/api/change_status', methods=['POST'])
 def change_status():
