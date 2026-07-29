@@ -75,9 +75,8 @@ function changeStatus(btn, link, newStatus) {
         });
 }
 
-function changeCV(selectElement, link) {
+function changeCvType(selectElement, link) {
     const cvType = selectElement.value;
-    const wrapper = selectElement.closest('.cv-selector-wrapper');
     const originalBorder = selectElement.style.borderColor;
 
     selectElement.disabled = true;
