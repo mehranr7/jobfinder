@@ -195,19 +195,10 @@ def scrape_stepstone(page, url):
         job_a_tag = None
         # First, try to find the specific job link format
         for a in article.find_all("a", href=True):
-            if "stellenangebote--" in a["href"]:
+            if "stellenangebote--" in a["href"] or "/job/" in a["href"] or "job-item" in a.get("class", []):
                 job_a_tag = a
                 break
                 
-        # Fallback: check if h2 contains or is wrapped in an a_tag
-        if not job_a_tag:
-            h2 = article.find("h2")
-            if h2:
-                if h2.find("a", href=True):
-                    job_a_tag = h2.find("a", href=True)
-                elif h2.parent.name == "a":
-                    job_a_tag = h2.parent
-                    
         if not job_a_tag:
             continue
             
@@ -226,11 +217,7 @@ def scrape_stepstone(page, url):
             continue
             
         company_tag = article.find(attrs={"data-at": "job-item-company-name"})
-        if not company_tag:
-            continue
-            
-        company_text = company_tag.get_text(strip=True)
-        company = company_text if company_text else "Stepstone"
+        company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
         
         matched_keywords = []
         for kw in KEYWORDS:
@@ -348,6 +335,50 @@ def main(log_queue=None):
                         raise ValueError("Extracted text is too short, falling back.")
                         
                     job['description'] = utils.clean_text(text_content) # Just for extra safety with spacing
+                    
+                    # --- Platform-Specific Description Trimming ---
+                    if 'stellenwerk' in job['link'].lower():
+                        desc = job['description']
+                        start_idx = desc.find('Magazin\n')
+                        if start_idx != -1:
+                            desc = desc[start_idx + 8:] # cut out Magazin\n
+                            
+                        # Further trim the repetitive title, company, and 'Dein Job' heading
+                        dein_job_idx = desc.find('Dein Job\n')
+                        if dein_job_idx != -1:
+                            desc = desc[dein_job_idx + 9:] # cut out Dein Job\n
+                        
+                        end_idx = desc.find('\nJetzt bewerben')
+                        if end_idx != -1:
+                            desc = desc[:end_idx]
+                        
+                        job['description'] = desc.strip()
+                        
+                    elif 'stepstone' in job['link'].lower():
+                        desc = job['description']
+                        
+                        # Remove leading "Ich bin interessiert" and "Speichern" and "Einleitung"
+                        prefixes_to_remove = ["Ich bin interessiert", "Speichern", "Einleitung"]
+                        lines = desc.split('\n')
+                        while lines and (lines[0].strip() in prefixes_to_remove or not lines[0].strip()):
+                            lines.pop(0)
+                        desc = '\n'.join(lines)
+                        
+                        t_str = job['title'] + '\n'
+                        idx1 = desc.find(t_str)
+                        if idx1 != -1:
+                            idx2 = desc.find(t_str, idx1 + len(t_str))
+                            if idx2 != -1:
+                                nl1 = desc.find('\n', idx2 + len(t_str))
+                                if nl1 != -1:
+                                    desc = desc[nl1 + 1:]
+                        
+                        end_idx = desc.find('Diese Jobs waren bei anderen Jobsuchenden beliebt')
+                        if end_idx != -1:
+                            desc = desc[:end_idx]
+                        
+                        job['description'] = desc.strip()
+                    # ----------------------------------------------
                     
                     desc_tags = []
                     for kw in KEYWORDS:
