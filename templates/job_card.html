@@ -72,7 +72,7 @@
             {% endfor %}
         </span>
         <span class="meta-item cv-selector-wrapper">
-           <div class="job-actions">
+            CV: 
             <select class="cv-select" onchange="changeCvType(this, '{{ job.link }}')">
                 <option value="" {% if not job.cv_type %}selected{% endif %}>Select CV...</option>
                 {% for cv in cv_types %}
@@ -84,7 +84,7 @@
             {% for state in app_states %}
                 <option value="{{ state }}" {% if (job.app_state or 'Not Applied') == state %}selected{% endif %}>{{ state }}</option>
             {% endfor %}
-        </select>
+            </select>
         </span>
     </div>
 
