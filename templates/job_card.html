@@ -31,6 +31,10 @@
                           title="Click to copy Cover Letter">📋 Cover Letter</button>
                 {% endif %}
                 
+                <button class="eval-badge" style="background-color: #9b59b6; color: white; border: none; font-size: inherit; font-family: inherit; margin-left: 5px;" 
+                      onclick="evaluateJob(this, '{{ job.link }}')" 
+                      title="Click to re-evaluate this job">🔄 Reevaluate</button>
+                
             {% else %}
                 <button class="eval-badge eval-yellow" style="border: none; font-size: inherit; font-family: inherit;" 
                       onclick="evaluateJob(this, '{{ job.link }}')" 
