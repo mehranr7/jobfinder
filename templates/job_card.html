@@ -75,14 +75,21 @@
             CV: 
             <select class="cv-select" onchange="changeCvType(this, '{{ job.link }}')">
                 <option value="" {% if not job.cv_type %}selected{% endif %}>Select CV...</option>
+                {% if job.cv_type and job.cv_type not in cv_types %}
+                    <option value="{{ job.cv_type }}" selected>{{ job.cv_type }} (Legacy)</option>
+                {% endif %}
                 {% for cv in cv_types %}
                     <option value="{{ cv }}" {% if job.cv_type == cv %}selected{% endif %}>{{ cv }} CV</option>
                 {% endfor %}
             </select>
             | State:
+            {% set current_state = job.app_state or 'Not Applied' %}
             <select class="cv-select app-state-select" onchange="changeAppState(this, '{{ job.link }}')">
+            {% if current_state not in app_states %}
+                <option value="{{ current_state }}" selected>{{ current_state }} (Legacy)</option>
+            {% endif %}
             {% for state in app_states %}
-                <option value="{{ state }}" {% if (job.app_state or 'Not Applied') == state %}selected{% endif %}>{{ state }}</option>
+                <option value="{{ state }}" {% if current_state == state %}selected{% endif %}>{{ state }}</option>
             {% endfor %}
             </select>
         </span>
