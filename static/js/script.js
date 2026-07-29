@@ -540,6 +540,7 @@ function fetchLatestJobs() {
 
             // Re-initialize jobCards list so filters keep working
             window.jobCards = Array.from(document.querySelectorAll('.job-card'));
+            cacheJobCards();
 
             // Re-populate dropdowns with new tags from newly added jobs
             populateDropdowns();
@@ -848,10 +849,7 @@ function populateDropdowns() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    window.jobCards = Array.from(document.querySelectorAll('.job-card'));
-    
-    // Pre-cache DOM attributes to massive speed up filtering and sorting
+function cacheJobCards() {
     window.jobCards.forEach(card => {
         card._cache = {
             title: card.getAttribute('data-title') || "",
@@ -866,6 +864,13 @@ document.addEventListener('DOMContentLoaded', () => {
             dateNum: new Date(card.getAttribute('data-date')).getTime()
         };
     });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.jobCards = Array.from(document.querySelectorAll('.job-card'));
+    
+    // Pre-cache DOM attributes to massive speed up filtering and sorting
+    cacheJobCards();
 
     window.originalJobCards = [...window.jobCards];
     window.filteredCards = [...window.jobCards];
