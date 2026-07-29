@@ -183,15 +183,17 @@ def stop_scraper():
     scraper.current_state = scraper.STATE_STOPPED
     return jsonify({"success": True})
 
-@app.route('/api/pause_evaluator', methods=['POST'])
-def pause_evaluator():
-    evaluator.current_state = evaluator.STATE_PAUSED
-    return jsonify({"success": True})
+@app.route('/api/get_evaluator_state', methods=['GET'])
+def get_evaluator_state():
+    return jsonify({"state": evaluator.current_state})
 
-@app.route('/api/resume_evaluator', methods=['POST'])
-def resume_evaluator():
-    evaluator.current_state = evaluator.STATE_RUNNING
-    return jsonify({"success": True})
+@app.route('/api/toggle_evaluator', methods=['POST'])
+def toggle_evaluator():
+    if evaluator.current_state == evaluator.STATE_PAUSED:
+        evaluator.current_state = evaluator.STATE_RUNNING
+    else:
+        evaluator.current_state = evaluator.STATE_PAUSED
+    return jsonify({"success": True, "state": evaluator.current_state})
 
 @app.route('/api/evaluate_job', methods=['POST'])
 def evaluate_job():

@@ -588,19 +588,31 @@ function setupEvalTerminal() {
 }
 setupEvalTerminal();
 
-function pauseEvaluator() {
-    fetch('/api/pause_evaluator', { method: 'POST' })
-        .then(() => {
-            document.getElementById('pauseEvalBtn').style.display = 'none';
-            document.getElementById('resumeEvalBtn').style.display = 'inline-block';
+function toggleEvaluator() {
+    fetch('/api/toggle_evaluator', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            updateEvalButton(data.state);
         });
 }
 
-function resumeEvaluator() {
-    fetch('/api/resume_evaluator', { method: 'POST' })
-        .then(() => {
-            document.getElementById('resumeEvalBtn').style.display = 'none';
-            document.getElementById('pauseEvalBtn').style.display = 'inline-block';
+function updateEvalButton(state) {
+    const btn = document.getElementById('toggleEvalBtn');
+    if (!btn) return;
+    if (state === 'RUNNING') {
+        btn.style.backgroundColor = '#27ae60';
+        btn.innerText = 'Eval: ON';
+    } else {
+        btn.style.backgroundColor = '#f39c12';
+        btn.innerText = 'Eval: OFF';
+    }
+}
+
+function syncEvaluatorState() {
+    fetch('/api/get_evaluator_state')
+        .then(res => res.json())
+        .then(data => {
+            updateEvalButton(data.state);
         });
 }
 
@@ -880,4 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial filter, sort, and render
     filterJobs();
+    
+    // Sync UI states with backend
+    syncEvaluatorState();
 });
