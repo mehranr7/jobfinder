@@ -262,6 +262,12 @@ function deleteJob(btn, link) {
         });
 }
 
+let filterTimeout;
+function debouncedFilterJobs() {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(filterJobs, 150);
+}
+
 function filterJobs() {
     const searchInput = document.getElementById('searchInput');
     const textFilter = searchInput ? searchInput.value.toLowerCase() : "";
@@ -295,28 +301,19 @@ function filterJobs() {
     const statusFilter = statusSelect ? statusSelect.value : "";
 
     window.filteredCards = window.jobCards.filter(card => {
-        const title = card.getAttribute('data-title');
-        const kws = card.getAttribute('data-keyword').toLowerCase();
-        const company = (card.getAttribute('data-company') || "").toLowerCase();
-        const platform = (card.getAttribute('data-platform') || "").toLowerCase();
-        const status = card.getAttribute('data-status') || "Unseen";
+        const c = card._cache;
 
-        const posKwsList = card.getAttribute('data-pos-keyword').split(',').map(s => s.trim());
-        const negKwsList = card.getAttribute('data-neg-keyword').split(',').map(s => s.trim());
-        const descTagsList = (card.getAttribute('data-desc-tags') || "").split(',').map(s => s.trim());
-        const negDescTagsList = (card.getAttribute('data-neg-desc-tags') || "").split(',').map(s => s.trim());
-
-        let matchesText = title.includes(textFilter) || kws.includes(textFilter) || company.includes(textFilter) || platform.includes(textFilter);
-        let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => posKwsList.includes(kw));
-        let matchesCompany = selectedCompanies.length === 0 || selectedCompanies.includes(company);
-        let matchesPlatform = selectedPlatforms.length === 0 || selectedPlatforms.includes(platform);
-        let matchesNegKeyword = selectedNegKws.length === 0 || selectedNegKws.some(kw => negKwsList.includes(kw));
-        let matchesDescTag = selectedDescTags.length === 0 || selectedDescTags.some(tag => descTagsList.includes(tag));
-        let matchesNegDescTag = selectedNegDescTags.length === 0 || selectedNegDescTags.some(tag => negDescTagsList.includes(tag));
+        let matchesText = c.title.includes(textFilter) || c.kws.includes(textFilter) || c.company.includes(textFilter) || c.platform.includes(textFilter);
+        let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => c.posKwsList.includes(kw));
+        let matchesCompany = selectedCompanies.length === 0 || selectedCompanies.includes(c.company);
+        let matchesPlatform = selectedPlatforms.length === 0 || selectedPlatforms.includes(c.platform);
+        let matchesNegKeyword = selectedNegKws.length === 0 || selectedNegKws.some(kw => c.negKwsList.includes(kw));
+        let matchesDescTag = selectedDescTags.length === 0 || selectedDescTags.some(tag => c.descTagsList.includes(tag));
+        let matchesNegDescTag = selectedNegDescTags.length === 0 || selectedNegDescTags.some(tag => c.negDescTagsList.includes(tag));
 
         let matchesStatus = true;
         if (statusFilter && statusFilter !== "") {
-            matchesStatus = (status === statusFilter);
+            matchesStatus = (c.status === statusFilter);
         }
 
         return matchesText && matchesKeyword && matchesCompany && matchesPlatform && matchesNegKeyword && matchesDescTag && matchesNegDescTag && matchesStatus;
@@ -331,8 +328,8 @@ function applySortAndRender(resetPagination) {
 
     if (sortValue === "date-asc") {
         window.filteredCards.sort((a, b) => {
-            const da = new Date(a.getAttribute('data-date')).getTime();
-            const db = new Date(b.getAttribute('data-date')).getTime();
+            const da = a._cache.dateNum;
+            const db = b._cache.dateNum;
             if (isNaN(da) && isNaN(db)) return 0;
             if (isNaN(da)) return 1;
             if (isNaN(db)) return -1;
@@ -340,19 +337,19 @@ function applySortAndRender(resetPagination) {
         });
     } else if (sortValue === "date-desc") {
         window.filteredCards.sort((a, b) => {
-            const da = new Date(a.getAttribute('data-date')).getTime();
-            const db = new Date(b.getAttribute('data-date')).getTime();
+            const da = a._cache.dateNum;
+            const db = b._cache.dateNum;
             if (isNaN(da) && isNaN(db)) return 0;
             if (isNaN(da)) return 1;
             if (isNaN(db)) return -1;
             return db - da;
         });
     } else if (sortValue === "title-asc") {
-        window.filteredCards.sort((a, b) => a.getAttribute('data-title').localeCompare(b.getAttribute('data-title')));
+        window.filteredCards.sort((a, b) => a._cache.title.localeCompare(b._cache.title));
     } else if (sortValue === "title-desc") {
-        window.filteredCards.sort((a, b) => b.getAttribute('data-title').localeCompare(a.getAttribute('data-title')));
+        window.filteredCards.sort((a, b) => b._cache.title.localeCompare(a._cache.title));
     } else if (sortValue === "keyword-asc") {
-        window.filteredCards.sort((a, b) => a.getAttribute('data-keyword').localeCompare(b.getAttribute('data-keyword')));
+        window.filteredCards.sort((a, b) => a._cache.kws.localeCompare(b._cache.kws));
     }
 
     if (resetPagination) {
@@ -853,6 +850,23 @@ function populateDropdowns() {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.jobCards = Array.from(document.querySelectorAll('.job-card'));
+    
+    // Pre-cache DOM attributes to massive speed up filtering and sorting
+    window.jobCards.forEach(card => {
+        card._cache = {
+            title: card.getAttribute('data-title') || "",
+            kws: (card.getAttribute('data-keyword') || "").toLowerCase(),
+            company: (card.getAttribute('data-company') || "").toLowerCase(),
+            platform: (card.getAttribute('data-platform') || "").toLowerCase(),
+            status: card.getAttribute('data-status') || "Unseen",
+            posKwsList: (card.getAttribute('data-pos-keyword') || "").split(',').map(s => s.trim()),
+            negKwsList: (card.getAttribute('data-neg-keyword') || "").split(',').map(s => s.trim()),
+            descTagsList: (card.getAttribute('data-desc-tags') || "").split(',').map(s => s.trim()),
+            negDescTagsList: (card.getAttribute('data-neg-desc-tags') || "").split(',').map(s => s.trim()),
+            dateNum: new Date(card.getAttribute('data-date')).getTime()
+        };
+    });
+
     window.originalJobCards = [...window.jobCards];
     window.filteredCards = [...window.jobCards];
     window.currentVisibleCount = window.PAGE_SIZE || 20;
