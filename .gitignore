@@ -20,3 +20,6 @@ jobs.db
 config.yml
 cvs/
 llm_instruction.txt
+
+# Agent configurations
+.agents/

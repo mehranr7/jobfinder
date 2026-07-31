@@ -171,12 +171,12 @@ def scrape_stellenwerk(page, url):
                 
         matched_keywords = []
         for kw in KEYWORDS:
-            if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
+            if re.search(re.escape(kw), title, re.IGNORECASE):
                 matched_keywords.append(kw)
                 
         matched_negative_keywords = []
         for nkw in NEGATIVE_KEYWORDS:
-            if re.search(r'\b' + re.escape(nkw) + r'\b', card_text, re.IGNORECASE):
+            if re.search(re.escape(nkw), card_text, re.IGNORECASE):
                 matched_negative_keywords.append(nkw)
                 
         if matched_keywords:
@@ -246,12 +246,12 @@ def scrape_stepstone(page, url):
         
         matched_keywords = []
         for kw in KEYWORDS:
-            if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
+            if re.search(re.escape(kw), title, re.IGNORECASE):
                 matched_keywords.append(kw)
                 
         matched_negative_keywords = []
         for nkw in NEGATIVE_KEYWORDS:
-            if re.search(r'\b' + re.escape(nkw) + r'\b', card_text, re.IGNORECASE):
+            if re.search(re.escape(nkw), card_text, re.IGNORECASE):
                 matched_negative_keywords.append(nkw)
                 
         if matched_keywords:
@@ -312,12 +312,12 @@ def scrape_xing(page, url):
         
         matched_keywords = []
         for kw in KEYWORDS:
-            if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
+            if re.search(re.escape(kw), title, re.IGNORECASE):
                 matched_keywords.append(kw)
                 
         matched_negative_keywords = []
         for nkw in NEGATIVE_KEYWORDS:
-            if re.search(r'\b' + re.escape(nkw) + r'\b', card_text, re.IGNORECASE):
+            if re.search(re.escape(nkw), card_text, re.IGNORECASE):
                 matched_negative_keywords.append(nkw)
                 
         if matched_keywords:
@@ -497,7 +497,7 @@ def main(log_queue=None):
                     
                     desc_tags = []
                     for kw in KEYWORDS:
-                        if re.search(r'\b' + re.escape(kw) + r'\b', job['description'], re.IGNORECASE):
+                        if re.search(re.escape(kw), job['description'], re.IGNORECASE):
                             desc_tags.append(kw)
                     # Deduplicate while preserving order
                     seen = set()
@@ -506,7 +506,7 @@ def main(log_queue=None):
                     
                     neg_desc_tags = []
                     for nkw in NEGATIVE_KEYWORDS:
-                        if re.search(r'\b' + re.escape(nkw) + r'\b', job['description'], re.IGNORECASE):
+                        if re.search(re.escape(nkw), job['description'], re.IGNORECASE):
                             neg_desc_tags.append(nkw)
                     # Deduplicate while preserving order
                     seen_neg = set()
@@ -519,7 +519,7 @@ def main(log_queue=None):
                     # Extract tags from the preview text fallback
                     desc_tags = []
                     for kw in KEYWORDS:
-                        if re.search(r'\b' + re.escape(kw) + r'\b', job['description'], re.IGNORECASE):
+                        if re.search(re.escape(kw), job['description'], re.IGNORECASE):
                             desc_tags.append(kw)
                     seen = set()
                     unique_tags = [x for x in desc_tags if not (x in seen or seen.add(x))]
@@ -527,7 +527,7 @@ def main(log_queue=None):
                     
                     neg_desc_tags = []
                     for nkw in NEGATIVE_KEYWORDS:
-                        if re.search(r'\b' + re.escape(nkw) + r'\b', job['description'], re.IGNORECASE):
+                        if re.search(re.escape(nkw), job['description'], re.IGNORECASE):
                             neg_desc_tags.append(nkw)
                     seen_neg = set()
                     unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]

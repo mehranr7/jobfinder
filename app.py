@@ -132,24 +132,24 @@ def update_tags():
                 
                 matched_kws = []
                 for kw in keywords:
-                    if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
+                    if re.search(re.escape(kw), title, re.IGNORECASE):
                         matched_kws.append(kw)
                 
                 matched_neg_kws = []
                 for nkw in negative_keywords:
-                    if re.search(r'\b' + re.escape(nkw) + r'\b', title, re.IGNORECASE):
+                    if re.search(re.escape(nkw), title, re.IGNORECASE):
                         matched_neg_kws.append(nkw)
                 
                 desc_tags = []
                 for kw in keywords:
-                    if re.search(r'\b' + re.escape(kw) + r'\b', desc, re.IGNORECASE):
+                    if re.search(re.escape(kw), desc, re.IGNORECASE):
                         desc_tags.append(kw)
                 seen = set()
                 unique_tags = [x for x in desc_tags if not (x in seen or seen.add(x))]
                 
                 neg_desc_tags = []
                 for nkw in negative_keywords:
-                    if re.search(r'\b' + re.escape(nkw) + r'\b', desc, re.IGNORECASE):
+                    if re.search(re.escape(nkw), desc, re.IGNORECASE):
                         neg_desc_tags.append(nkw)
                 seen_neg = set()
                 unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
