@@ -25,6 +25,13 @@
             <button class="done-btn" id="updateTagsBtn" onclick="updateTags()"
                 style="font-size: 1.1em; padding: 10px 20px; background-color: #8e44ad; margin-left: 10px;">🏷️ Update Tags</button>
         </div>
+        
+        <div id="updateProgressContainer" style="display: none; margin-bottom: 20px; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto;">
+            <div style="background-color: #ecf0f1; border-radius: 8px; height: 20px; width: 100%; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);">
+                <div id="updateProgressBar" style="background-color: #8e44ad; height: 100%; width: 0%; transition: width 0.2s ease;"></div>
+            </div>
+            <div id="updateProgressText" style="margin-top: 5px; font-size: 0.9em; color: #7f8c8d; font-family: monospace;">Updating 0 of 0 jobs...</div>
+        </div>
 
         <div id="terminalContainer"
             style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">

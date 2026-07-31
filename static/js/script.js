@@ -560,29 +560,57 @@ function updateTags() {
     btn.innerText = "⏳ Updating...";
     btn.disabled = true;
     
-    fetch('/api/update_tags', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
+    const progressContainer = document.getElementById('updateProgressContainer');
+    const progressBar = document.getElementById('updateProgressBar');
+    const progressText = document.getElementById('updateProgressText');
+    
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressText.innerText = 'Starting...';
+
+    const source = new EventSource('/api/update_tags');
+
+    source.onmessage = function (event) {
+        try {
+            const data = JSON.parse(event.data);
+            
+            if (data.error) {
+                alert("Failed to update tags: " + data.error);
+                source.close();
+                resetUI();
+                return;
+            }
+            
+            const pct = data.total > 0 ? (data.progress / data.total) * 100 : 100;
+            progressBar.style.width = pct + '%';
+            progressText.innerText = `Updating ${data.progress} of ${data.total} jobs...`;
+            
             if (data.success) {
+                source.close();
                 btn.innerText = "✅ Done!";
-                // Refresh the job list so new tags appear
                 fetchLatestJobs();
                 setTimeout(() => {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
+                    resetUI();
                 }, 2000);
-            } else {
-                alert("Failed to update tags: " + data.error);
-                btn.innerText = originalText;
-                btn.disabled = false;
             }
-        })
-        .catch(err => {
-            console.error("Error updating tags:", err);
-            alert("Network error while updating tags.");
-            btn.innerText = originalText;
-            btn.disabled = false;
-        });
+        } catch (e) {
+            console.error("Error parsing progress:", e, event.data);
+        }
+    };
+
+    source.onerror = function () {
+        source.close();
+        alert("Network error while updating tags.");
+        resetUI();
+    };
+    
+    function resetUI() {
+        btn.innerText = originalText;
+        btn.disabled = false;
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+        }, 500); // hide slightly after so user sees 100%
+    }
 }
 
 function fetchLatestJobs() {

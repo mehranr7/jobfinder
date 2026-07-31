@@ -7,6 +7,7 @@ import queue
 import csv
 import io
 import re
+import json
 
 import utils
 
@@ -110,60 +111,68 @@ def delete_job():
     database.delete_job(link)
     return jsonify({'success': True, 'link': link})
 
-@app.route('/api/update_tags', methods=['POST'])
+@app.route('/api/update_tags', methods=['GET'])
 def update_tags():
-    try:
-        scraper.load_config()
-        keywords = scraper.KEYWORDS
-        negative_keywords = scraper.NEGATIVE_KEYWORDS
-        
-        conn = database.get_connection()
-        c = conn.cursor()
-        c.execute("SELECT link, title, description FROM jobs")
-        jobs = [dict(row) for row in c.fetchall()]
-        conn.close()
-        
-        for job in jobs:
-            title = job['title']
-            desc = job['description'] or ""
+    def generate():
+        try:
+            scraper.load_config()
+            keywords = scraper.KEYWORDS
+            negative_keywords = scraper.NEGATIVE_KEYWORDS
             
-            matched_kws = []
-            for kw in keywords:
-                if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
-                    matched_kws.append(kw)
+            conn = database.get_connection()
+            c = conn.cursor()
+            c.execute("SELECT link, title, description FROM jobs")
+            jobs = [dict(row) for row in c.fetchall()]
+            conn.close()
             
-            matched_neg_kws = []
-            for nkw in negative_keywords:
-                if re.search(r'\b' + re.escape(nkw) + r'\b', title, re.IGNORECASE):
-                    matched_neg_kws.append(nkw)
+            total = len(jobs)
+            for i, job in enumerate(jobs):
+                title = job['title']
+                desc = job['description'] or ""
+                
+                matched_kws = []
+                for kw in keywords:
+                    if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
+                        matched_kws.append(kw)
+                
+                matched_neg_kws = []
+                for nkw in negative_keywords:
+                    if re.search(r'\b' + re.escape(nkw) + r'\b', title, re.IGNORECASE):
+                        matched_neg_kws.append(nkw)
+                
+                desc_tags = []
+                for kw in keywords:
+                    if re.search(r'\b' + re.escape(kw) + r'\b', desc, re.IGNORECASE):
+                        desc_tags.append(kw)
+                seen = set()
+                unique_tags = [x for x in desc_tags if not (x in seen or seen.add(x))]
+                
+                neg_desc_tags = []
+                for nkw in negative_keywords:
+                    if re.search(r'\b' + re.escape(nkw) + r'\b', desc, re.IGNORECASE):
+                        neg_desc_tags.append(nkw)
+                seen_neg = set()
+                unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
+                
+                database.update_job_tags(
+                    job['link'],
+                    ", ".join(matched_kws),
+                    ", ".join(matched_neg_kws),
+                    ", ".join(unique_tags),
+                    ", ".join(unique_neg_tags)
+                )
+                
+                if i % 10 == 0:
+                    yield f"data: {json.dumps({'progress': i, 'total': total, 'success': False})}\n\n"
+                    
+            yield f"data: {json.dumps({'progress': total, 'total': total, 'success': True})}\n\n"
+            yield "event: close\ndata: \n\n"
+        except Exception as e:
+            print(f"Error updating tags: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield "event: close\ndata: \n\n"
             
-            # Use original scraper logic to preserve order and deduplicate
-            desc_tags = []
-            for kw in keywords:
-                if re.search(r'\b' + re.escape(kw) + r'\b', desc, re.IGNORECASE):
-                    desc_tags.append(kw)
-            seen = set()
-            unique_tags = [x for x in desc_tags if not (x in seen or seen.add(x))]
-            
-            neg_desc_tags = []
-            for nkw in negative_keywords:
-                if re.search(r'\b' + re.escape(nkw) + r'\b', desc, re.IGNORECASE):
-                    neg_desc_tags.append(nkw)
-            seen_neg = set()
-            unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
-            
-            database.update_job_tags(
-                job['link'],
-                ", ".join(matched_kws),
-                ", ".join(matched_neg_kws),
-                ", ".join(unique_tags),
-                ", ".join(unique_neg_tags)
-            )
-            
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error updating tags: {e}")
-        return jsonify({'error': str(e)}), 500
+    return Response(generate(), mimetype='text/event-stream')
 
 
 @app.route('/api/export_csv', methods=['POST'])
