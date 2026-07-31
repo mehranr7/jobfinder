@@ -10,7 +10,21 @@ function toggleDescription(elementId, btn) {
 }
 
 function copyToClipboard(elementId, btn) {
-    const text = document.getElementById(elementId).innerText;
+    const el = document.getElementById(elementId);
+    
+    // innerText strips newlines if the element is hidden (display: none).
+    // So we temporarily make it visible, grab the text, and hide it again.
+    const originalDisplay = el.style.display;
+    if (originalDisplay === 'none' || originalDisplay === '') {
+        el.style.display = 'block';
+    }
+    
+    const text = el.innerText;
+    
+    if (originalDisplay === 'none' || originalDisplay === '') {
+        el.style.display = 'none';
+    }
+
     navigator.clipboard.writeText(text).then(() => {
         const originalText = btn.innerText;
         btn.innerText = "✅";
