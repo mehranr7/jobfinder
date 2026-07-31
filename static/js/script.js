@@ -552,6 +552,39 @@ function stopScraper() {
         });
 }
 
+function updateTags() {
+    const btn = document.getElementById('updateTagsBtn');
+    if (!btn || btn.disabled) return;
+    
+    const originalText = btn.innerText;
+    btn.innerText = "⏳ Updating...";
+    btn.disabled = true;
+    
+    fetch('/api/update_tags', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                btn.innerText = "✅ Done!";
+                // Refresh the job list so new tags appear
+                fetchLatestJobs();
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            } else {
+                alert("Failed to update tags: " + data.error);
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error("Error updating tags:", err);
+            alert("Network error while updating tags.");
+            btn.innerText = originalText;
+            btn.disabled = false;
+        });
+}
+
 function fetchLatestJobs() {
     fetch('/api/get_job_cards')
         .then(response => response.text())

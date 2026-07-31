@@ -172,6 +172,17 @@ def update_job_eval(link, eval_score, eval_reason, selected_cv="", cover_letter=
     conn.commit()
     conn.close()
 
+def update_job_tags(link, keywords, neg_keywords, desc_tags, neg_desc_tags):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('''
+        UPDATE jobs 
+        SET keywords = ?, negative_keywords = ?, description_tags = ?, neg_description_tags = ? 
+        WHERE link = ?
+    ''', (keywords, neg_keywords, desc_tags, neg_desc_tags, link))
+    conn.commit()
+    conn.close()
+
 def delete_job(link):
     conn = get_connection()
     c = conn.cursor()
