@@ -471,6 +471,28 @@ def main(log_queue=None):
                             desc = desc[:end_idx]
                         
                         job['description'] = desc.strip()
+                        
+                    elif 'xing' in job['link'].lower():
+                        # Extract the correct date if it's currently Unknown
+                        if job['date'] == "Unknown":
+                            time_loc = page.locator('time').first
+                            if time_loc.count() > 0:
+                                dt = time_loc.get_attribute('datetime')
+                                if dt:
+                                    job['date'] = dt.split('T')[0]
+                                    
+                        desc = job['description']
+                        start_marker = "Über diesen Job"
+                        start_idx = desc.find(start_marker)
+                        if start_idx != -1:
+                            desc = desc[start_idx + len(start_marker):]
+                            
+                        end_marker = "Unternehmens-Details"
+                        end_idx = desc.find(end_marker)
+                        if end_idx != -1:
+                            desc = desc[:end_idx]
+                            
+                        job['description'] = desc.strip()
                     # ----------------------------------------------
                     
                     desc_tags = []
