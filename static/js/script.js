@@ -136,6 +136,13 @@ function changeAppState(selectElement, link) {
                 selectElement.style.borderColor = originalBorder;
             }, 2000);
             selectElement.disabled = false;
+            
+            const card = selectElement.closest('.job-card');
+            if (card && card._cache) {
+                card._cache.status = appState;
+                card.setAttribute('data-status', appState);
+                filterJobs();
+            }
         } else {
             alert("Failed to update State.");
             selectElement.disabled = false;
@@ -710,6 +717,7 @@ function populateDropdowns() {
 
     const companyDropdown = document.getElementById('companyDropdown');
     if (companyDropdown) {
+        const checkedVals = Array.from(companyDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
         companyDropdown.innerHTML = '';
         Array.from(companies).sort().forEach(comp => {
             const label = document.createElement('label');
@@ -720,6 +728,7 @@ function populateDropdowns() {
             checkbox.type = 'checkbox';
             checkbox.value = comp;
             checkbox.className = 'company-checkbox';
+            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
             checkbox.style.marginRight = '8px';
             checkbox.onchange = filterJobs;
             label.appendChild(checkbox);
@@ -732,6 +741,7 @@ function populateDropdowns() {
 
     const platformDropdown = document.getElementById('platformDropdown');
     if (platformDropdown) {
+        const checkedVals = Array.from(platformDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
         platformDropdown.innerHTML = '';
         Array.from(platforms).sort().forEach(plat => {
             const label = document.createElement('label');
@@ -742,6 +752,7 @@ function populateDropdowns() {
             checkbox.type = 'checkbox';
             checkbox.value = plat;
             checkbox.className = 'platform-checkbox';
+            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
             checkbox.style.marginRight = '8px';
             checkbox.onchange = filterJobs;
             label.appendChild(checkbox);
@@ -764,6 +775,7 @@ function populateDropdowns() {
 
     const keywordDropdown = document.getElementById('keywordDropdown');
     if (keywordDropdown) {
+        const checkedVals = Array.from(keywordDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
         keywordDropdown.innerHTML = '';
         Array.from(keywords).sort().forEach(kw => {
             const label = document.createElement('label');
@@ -774,6 +786,7 @@ function populateDropdowns() {
             checkbox.type = 'checkbox';
             checkbox.value = kw;
             checkbox.className = 'kw-checkbox';
+            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
             checkbox.style.marginRight = '8px';
             checkbox.onchange = filterJobs;
             label.appendChild(checkbox);
@@ -784,6 +797,7 @@ function populateDropdowns() {
 
     const negKeywordDropdown = document.getElementById('negKeywordDropdown');
     if (negKeywordDropdown) {
+        const checkedVals = Array.from(negKeywordDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
         negKeywordDropdown.innerHTML = '';
         Array.from(negKeywords).sort().forEach(kw => {
             const label = document.createElement('label');
@@ -794,6 +808,7 @@ function populateDropdowns() {
             checkbox.type = 'checkbox';
             checkbox.value = kw;
             checkbox.className = 'neg-kw-checkbox';
+            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
             checkbox.style.marginRight = '8px';
             checkbox.onchange = filterJobs;
             label.appendChild(checkbox);
@@ -813,6 +828,7 @@ function populateDropdowns() {
 
     const descTagDropdown = document.getElementById('descTagDropdown');
     if (descTagDropdown) {
+        const checkedVals = Array.from(descTagDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
         descTagDropdown.innerHTML = '';
         Array.from(descTags).sort().forEach(tag => {
             const label = document.createElement('label');
@@ -823,6 +839,7 @@ function populateDropdowns() {
             checkbox.type = 'checkbox';
             checkbox.value = tag;
             checkbox.className = 'desc-tag-checkbox';
+            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
             checkbox.style.marginRight = '8px';
             checkbox.onchange = filterJobs;
             label.appendChild(checkbox);
@@ -842,6 +859,7 @@ function populateDropdowns() {
 
     const negDescTagDropdown = document.getElementById('negDescTagDropdown');
     if (negDescTagDropdown) {
+        const checkedVals = Array.from(negDescTagDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
         negDescTagDropdown.innerHTML = '';
         Array.from(negDescTags).sort().forEach(tag => {
             const label = document.createElement('label');
@@ -852,6 +870,7 @@ function populateDropdowns() {
             checkbox.type = 'checkbox';
             checkbox.value = tag;
             checkbox.className = 'neg-desc-tag-checkbox';
+            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
             checkbox.style.marginRight = '8px';
             checkbox.onchange = filterJobs;
             label.appendChild(checkbox);
