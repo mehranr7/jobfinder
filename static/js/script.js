@@ -60,6 +60,7 @@ function changeStatus(btn, link, newStatus) {
                 btn.innerText = emoji;
                 btn.disabled = false;
 
+                if (card._cache) card._cache.status = newStatus;
                 filterJobs(); // update counts and visibility if filtered
             } else {
                 alert("Failed to update status.");
