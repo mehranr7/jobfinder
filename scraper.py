@@ -42,6 +42,8 @@ STELLENWERK_LINK = ""
 STELLENWERK_PAGES = 1
 STEPSTONE_LINK = ""
 STEPSTONE_PAGES = 1
+XING_LINK = ""
+XING_PAGES = 1
 TARGET_URLS = []
 KEYWORDS = []
 NEGATIVE_KEYWORDS = []
@@ -49,7 +51,7 @@ DELAY_MIN_MS = 1500
 DELAY_MAX_MS = 3500
 
 def load_config():
-    global STELLENWERK_LINK, STELLENWERK_PAGES, STEPSTONE_LINK, STEPSTONE_PAGES
+    global STELLENWERK_LINK, STELLENWERK_PAGES, STEPSTONE_LINK, STEPSTONE_PAGES, XING_LINK, XING_PAGES
     global TARGET_URLS, KEYWORDS, NEGATIVE_KEYWORDS, DELAY_MIN_MS, DELAY_MAX_MS
 
     with open("config.yml", "r", encoding="utf-8") as f:
@@ -59,6 +61,8 @@ def load_config():
     STELLENWERK_PAGES = config.get("stellenwerk_pages", 1)
     STEPSTONE_LINK = config.get("stepstone_link", "")
     STEPSTONE_PAGES = config.get("stepstone_pages", 1)
+    XING_LINK = config.get("xing_link", "")
+    XING_PAGES = config.get("xing_pages", 1)
 
     urls = []
     if STELLENWERK_LINK:
@@ -89,6 +93,27 @@ def load_config():
                 urls.append({
                     "url": f"{STEPSTONE_LINK}?page={i}",
                     "domain": "Stepstone",
+                    "page": i
+                })
+                
+    if XING_LINK:
+        urls.append({
+            "url": XING_LINK,
+            "domain": "Xing",
+            "page": 1
+        })
+        for i in range(2, XING_PAGES + 1):
+            if "?" in XING_LINK:
+                parts = XING_LINK.split("?", 1)
+                urls.append({
+                    "url": f"{parts[0]}?page={i}&{parts[1]}",
+                    "domain": "Xing",
+                    "page": i
+                })
+            else:
+                urls.append({
+                    "url": f"{XING_LINK}?page={i}",
+                    "domain": "Xing",
                     "page": i
                 })
                 
@@ -242,6 +267,72 @@ def scrape_stepstone(page, url):
             })
     return jobs
 
+def scrape_xing(page, url):
+    """
+    Scrapes job offers from a Xing URL.
+    Extracts jobs listed inside 'article' tags.
+    """
+    import requests
+    jobs = []
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    }
+    
+    try:
+        r = requests.get(url, headers=headers, timeout=15)
+        r.raise_for_status()
+        html = r.text
+    except Exception as e:
+        print(f"  [!] Failed to load Xing URL via requests: {e}")
+        return jobs
+
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    articles = soup.find_all("article")
+    
+    for article in articles:
+        job_a_tag = article.find("a", href=True)
+                
+        if not job_a_tag:
+            continue
+            
+        h2 = article.find("h2")
+        title = h2.get_text(strip=True) if h2 else job_a_tag.get_text(strip=True)
+        
+        raw_link = urljoin("https://www.xing.com", job_a_tag["href"])
+        job_link = raw_link.split('?')[0]
+        
+        card_text = article.get_text(separator=' ', strip=True)
+        if not card_text:
+            continue
+            
+        company_tag = article.find("p")
+        company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
+        
+        matched_keywords = []
+        for kw in KEYWORDS:
+            if re.search(r'\b' + re.escape(kw) + r'\b', title, re.IGNORECASE):
+                matched_keywords.append(kw)
+                
+        matched_negative_keywords = []
+        for nkw in NEGATIVE_KEYWORDS:
+            if re.search(r'\b' + re.escape(nkw) + r'\b', card_text, re.IGNORECASE):
+                matched_negative_keywords.append(nkw)
+                
+        if matched_keywords:
+            jobs.append({
+                "title": title,
+                "date": "Unknown",
+                "link": job_link,
+                "company": company,
+                "platform": "Xing",
+                "keyword": ", ".join(matched_keywords),
+                "negative_keyword": ", ".join(matched_negative_keywords),
+                "preview_text": card_text
+            })
+    return jobs
+
 def emit_log(msg, log_queue=None):
     """
     Prints a message to the console and pushes it to the log_queue if provided.
@@ -295,6 +386,8 @@ def main(log_queue=None):
                 jobs = scrape_stellenwerk(page, url)
             elif domain_name == "Stepstone":
                 jobs = scrape_stepstone(page, url)
+            elif domain_name == "Xing":
+                jobs = scrape_xing(page, url)
             else:
                 emit_log(f"Unknown domain for URL: {url}", log_queue)
                 continue

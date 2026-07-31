@@ -30,6 +30,10 @@ stellenwerk_pages: 2
 
 stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?xx-FILTERS-xx"
 stepstone_pages: 1
+
+xing_link: "YOUR_XING_SEARCH_URL"
+xing_pages: 5
+
 keywords:
   - "Werkstudent"
   - "working student"
