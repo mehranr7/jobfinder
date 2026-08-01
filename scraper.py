@@ -403,6 +403,14 @@ def main(log_queue=None):
                 if database.job_exists(job['link']):
                     emit_log(f"  -> SKIPPED (In DB): {title_disp} | {i+1}/{total_jobs}", log_queue)
                     continue
+
+                existing_job = database.get_existing_job_by_title_and_company(job['title'], job['company'])
+                if existing_job:
+                    log_msg = f"  -> SKIPPED (Duplicate on {existing_job['platform']}): {title_disp} ({job['company']}) | {i+1}/{total_jobs}\n"
+                    log_msg += f"       Original: {existing_job['link']}\n"
+                    log_msg += f"       Ignored:  {job['link']}"
+                    emit_log(log_msg, log_queue)
+                    continue
                 
                 new_jobs += 1
                 

@@ -99,6 +99,14 @@ def job_exists(link):
     conn.close()
     return result is not None
 
+def get_existing_job_by_title_and_company(title, company):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT platform, link FROM jobs WHERE LOWER(title) = LOWER(?) AND LOWER(company) = LOWER(?) LIMIT 1', (title, company))
+    result = c.fetchone()
+    conn.close()
+    return dict(result) if result else None
+
 def insert_job(job_dict):
     conn = get_connection()
     c = conn.cursor()
