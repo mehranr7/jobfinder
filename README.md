@@ -1,61 +1,130 @@
-# Job Finder
+# JobFinder
 
-A powerful, containerized web application built with Python, Flask, and Playwright to fetch, filter, and organize job offers from various portals (Stellenwerk and Stepstone). It provides a sleek, dark-themed UI to manage your job hunt locally using an SQLite database.
+An intelligent, self-hosted job aggregation platform that automatically discovers, scrapes, and evaluates job listings from multiple German job portals — then ranks them against your CV using Google's Gemini API.
+
+Built with Python, Flask, Playwright, and Docker. Designed to run locally with zero cloud dependencies beyond the LLM API.
 
 ## Features
-- **Headless Browser Scraping**: Uses Playwright to bypass basic anti-bot protections and deep-scrape job descriptions.
-- **Dynamic Configuration & Pagination**: Automatically generates target URLs for multiple pages based on a clean `config.yml` setup.
-- **Interactive Web UI**: A beautiful, dark-themed Flask frontend built with custom CSS and JavaScript.
-- **Live Scraper Updates**: Watch new jobs stream into your UI live via Server-Sent Events (SSE) while the scraper runs in the background.
-- **Advanced Filtering & Sorting**: Use multi-select dropdowns to instantly filter jobs by positive and negative keywords.
-- **Database Tracking**: Jobs are stored in a local SQLite database (`jobs.db`). Mark jobs as "Done" or delete them permanently so you never review the same job twice.
 
-## Requirements
-- Docker and Docker Compose
+- **Multi-Platform Scraping** — Aggregates listings from Stellenwerk, Stepstone, and Xing with automatic pagination and deduplication across platforms.
+- **AI-Powered Evaluation** — A background daemon continuously scores new jobs against your CV(s) using Google Gemini, producing a 0–100 match score, a reasoning summary, a recommended CV variant, and a draft cover letter.
+- **Live Streaming UI** — Server-Sent Events push scraper and evaluator logs to the browser in real time. New job cards appear dynamically without page reloads.
+- **Advanced Filtering & Sorting** — Multi-select keyword and negative-keyword filters, platform filters, status filters, and sort-by-date/score controls — all client-side for instant response.
+- **Application Tracking** — Track each job through configurable pipeline stages (e.g., Unseen → Applied → Interview → Offer). Attach notes and assign CV types per listing.
+- **CSV Export** — Export any filtered subset of jobs to a UTF-8 CSV report for offline review.
+- **Containerized Deployment** — Single `docker compose up` with persistent volumes for the database, configuration, CVs, and frontend assets.
 
-## Quickstart
+## Architecture
 
-1. **Configure Your Scraper**
-   Edit `config.yml` to define your target base URLs, the number of pages to scrape, and your positive/negative keywords:
-   ```yaml
-   stellenwerk_link: "https://www.stellenwerk.de/hamburg"
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Browser (UI)                         │
+│   Dark-themed SPA  ·  SSE streams  ·  Client-side filters   │
+└────────────────────────────┬────────────────────────────────┘
+                             │ HTTP / SSE
+┌────────────────────────────▼────────────────────────────────┐
+│                     Flask Application                       │
+│   REST API  ·  SSE endpoints  ·  Jinja2 templates           │
+├──────────┬──────────────────────────────┬───────────────────┤
+│ Scraper  │          Database            │    Evaluator      │
+│ Module   │         (SQLite)             │    Daemon         │
+│          │                              │                   │
+│ Playwright  ────►  jobs.db  ◄────  Gemini API               │
+│ + requests         (persistent)         (scoring + letters) │
+└──────────┴──────────────────────────────┴───────────────────┘
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.11, Flask |
+| Scraping | Playwright (Chromium), Requests, BeautifulSoup4 |
+| AI Evaluation | Google Gemini API (`google-generativeai`) |
+| Database | SQLite3 |
+| Frontend | Jinja2, Vanilla JS, Custom CSS (dark theme) |
+| Deployment | Docker, Docker Compose |
+| Real-time | Server-Sent Events (SSE) |
+
 ## Quick Start
 
-1. **Clone the repository.**
-2. **Setup your Configuration:**
-   Copy the example config file and fill in your keywords and API keys:
-   ```bash
-   cp config.example.yml config.yml
-   ```
-   Open `config.yml` in your editor and enter your `gemini_api_key`, along with any target keywords.
-   
-   **LLM Evaluation Setup:** 
-   - Place your PDF CVs into the `cvs/` directory and ensure their names match the ones in `config.yml`.
-   - Create a file named `llm_instruction.txt` in the root directory and write your custom prompt/rules for the LLM inside it.
-3. **Start the application with Docker:**
-   ```bash
-   docker compose up --build
-   ```
+### 1. Clone & Configure
 
-3. **Open the Web UI**
-   Visit [http://localhost:5000](http://localhost:5000) in your browser.
+```bash
+git clone https://github.com/mehranr7/jobfinder.git
+cd jobfinder
+cp config.example.yml config.yml
+```
 
-4. **Start Scraping**
-   Click the **"🚀 Run Scraper"** button in the UI to launch the Playwright script in the background. The terminal log will show real-time progress, and new jobs will dynamically appear in your list!
+Edit `config.yml` with your settings:
+- Set your `gemini_api_key`
+- Configure target job portal URLs and page counts
+- Define your positive/negative keyword lists
 
-## Development & Manual Setup
+### 2. Set Up CV Evaluation (Optional)
 
-If you prefer to run the app outside of Docker:
+```bash
+mkdir cvs
+# Place your PDF CVs in the cvs/ directory
+```
 
-1. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Install Playwright browser binaries:
-   ```bash
-   playwright install chromium
-   ```
-3. Run the Flask server:
-   ```bash
-   python app.py
-   ```
+Create `llm_instruction.txt` with your custom evaluation prompt for the Gemini model.
+
+### 3. Run with Docker
+
+```bash
+docker compose up --build
+```
+
+Open [http://localhost:4567](http://localhost:4567) in your browser.
+
+### 4. Run Without Docker
+
+```bash
+pip install -r requirements.txt
+playwright install chromium
+python app.py
+```
+
+## Configuration Reference
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `port` | Server port | `4567` |
+| `gemini_api_key` | Google Gemini API key | — |
+| `evaluator_model` | Gemini model for evaluation | `gemini-2.5-flash` |
+| `evaluator_delay_s` | Seconds between evaluations (rate limiting) | `15` |
+| `cv_paths` | List of PDF CV file paths | `[]` |
+| `stellenwerk_link` | Stellenwerk search URL | — |
+| `stepstone_link` | Stepstone search URL | — |
+| `xing_link` | Xing search URL | — |
+| `keywords` | Positive keywords for matching | `[]` |
+| `negative_keywords` | Negative keywords for filtering | `[]` |
+| `app_states` | Custom application pipeline stages | `[Unseen, Applied, ...]` |
+| `cv_types` | CV variant labels | `[Software, Data, ...]` |
+
+## Project Structure
+
+```
+jobfinder/
+├── app.py                 # Flask application and API routes
+├── scraper.py             # Multi-platform scraping engine
+├── evaluator.py           # Gemini-powered job evaluation daemon
+├── database.py            # SQLite data access layer
+├── utils.py               # Text cleaning, date parsing, helpers
+├── config.example.yml     # Configuration template
+├── requirements.txt       # Pinned Python dependencies
+├── Dockerfile             # Multi-stage container build
+├── docker-compose.yml     # Production compose configuration
+├── static/
+│   ├── css/style.css      # Dark-themed UI stylesheet
+│   └── js/script.js       # Client-side filtering, SSE, and interactions
+└── templates/
+    ├── index.html          # Main application page
+    ├── job_card.html       # Individual job card component
+    └── job_cards.html      # Job card list renderer
+```
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

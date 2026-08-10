@@ -1,5 +1,8 @@
+# ── Server ────────────────────────────────────────────────
 port: 4567
 page_size: 20
+
+# ── Application Pipeline ─────────────────────────────────
 app_states:
   - "Not Applied"
   - "Applied"
@@ -12,32 +15,35 @@ cv_types:
   - "Hardware"
   - "Data"
   - "General"
+
+# ── Scraper Settings ──────────────────────────────────────
 delay_min_ms: 1000
 delay_max_ms: 1500
 special_keyword_threshold: 3
 
-# API Keys
-gemini_api_key: "YOUR_GEMINI_API_KEY_HERE"
-
-# Evaluator Settings
-evaluator_model: "gemini-2.5-flash"
-evaluator_delay_s: 15
-cv_paths:
-  - "cvs/my_cv.pdf"
-  
 stellenwerk_link: "https://www.stellenwerk.de/CITY"
 stellenwerk_pages: 2
 
-stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?xx-FILTERS-xx"
+stepstone_link: "https://www.stepstone.de/jobs/teilzeit/in-hamburg?FILTERS"
 stepstone_pages: 1
 
 xing_link: "YOUR_XING_SEARCH_URL"
 xing_pages: 5
 
+# ── AI Evaluator ──────────────────────────────────────────
+gemini_api_key: "YOUR_GEMINI_API_KEY_HERE"
+evaluator_model: "gemini-2.5-flash"
+evaluator_delay_s: 15
+
+cv_paths:
+  - "cvs/my_cv.pdf"
+
+# ── Keywords ──────────────────────────────────────────────
 keywords:
   - "Werkstudent"
   - "working student"
   - "Informatik"
+
 negative_keywords:
   - "Senior"
   - "Lead"

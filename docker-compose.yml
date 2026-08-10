@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   jobfinder:
     build: .
@@ -7,11 +5,10 @@ services:
     ports:
       - "4567:4567"
     volumes:
-      # Persist the database locally so it survives container restarts
       - ./jobs.db:/app/jobs.db
-      # Persist the configuration locally so you can edit it without rebuilding
       - ./config.yml:/app/config.yml
-      # Mount static and templates for live frontend reloading
+      - ./llm_instruction.txt:/app/llm_instruction.txt
+      - ./cvs:/app/cvs
       - ./static:/app/static
       - ./templates:/app/templates
     restart: unless-stopped

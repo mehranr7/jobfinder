@@ -1,4 +1,3 @@
-# Use Debian Bookworm Slim (Trixie has missing font packages that break Playwright)
 FROM python:3.11-slim-bookworm
 
 WORKDIR /app
@@ -16,18 +15,13 @@ RUN playwright install --with-deps chromium \
     && rm -rf /ms-playwright/ffmpeg-* \
     && (find / -type d -name __pycache__ -exec rm -r {} + 2>/dev/null || true)
 
-# Now copy requirements and install other dependencies
-# This way, if you modify requirements.txt, you won't have to redownload Playwright!
+# Install Python dependencies (cached separately from Playwright)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Copy application source
 COPY . .
 
-# Expose port
-EXPOSE 5000
+EXPOSE 4567
 
-# Start command
 CMD ["python", "app.py"]
-
-
