@@ -25,4 +25,4 @@ COPY . .
 
 EXPOSE 4567
 
-ENTRYPOINT ["/bin/sh", "entrypoint.sh"]
+CMD ["/bin/sh", "-c", "[ -d /app/jobs.db ] && rmdir /app/jobs.db; touch /app/jobs.db && exec python app.py"]
