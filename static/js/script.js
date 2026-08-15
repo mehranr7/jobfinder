@@ -668,7 +668,10 @@ function setupEvalTerminal() {
         setTimeout(setupEvalTerminal, 5000);
     };
 }
-setupEvalTerminal();
+// Only connect to the evaluator stream when it is enabled
+if (typeof EVALUATOR_ENABLED !== 'undefined' && EVALUATOR_ENABLED) {
+    setupEvalTerminal();
+}
 
 function toggleEvaluator() {
     fetch('/api/toggle_evaluator', { method: 'POST' })
@@ -691,6 +694,7 @@ function updateEvalButton(state) {
 }
 
 function syncEvaluatorState() {
+    if (typeof EVALUATOR_ENABLED === 'undefined' || !EVALUATOR_ENABLED) return;
     fetch('/api/get_evaluator_state')
         .then(res => res.json())
         .then(data => {
@@ -699,6 +703,10 @@ function syncEvaluatorState() {
 }
 
 function evaluateJob(btn, link) {
+    if (typeof EVALUATOR_ENABLED !== 'undefined' && !EVALUATOR_ENABLED) {
+        alert('AI Evaluation is disabled. Set enable_evaluator: true in config.yml to use this feature.');
+        return;
+    }
     if (btn.disabled) return;
     const originalText = btn.innerHTML;
     btn.innerHTML = "⏳ Evaluating...";

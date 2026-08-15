@@ -16,12 +16,13 @@ RUN playwright install --with-deps chromium \
     && (find / -type d -name __pycache__ -exec rm -r {} + 2>/dev/null || true)
 
 # Install Python dependencies (cached separately from Playwright)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt entrypoint.sh ./
+RUN pip install --no-cache-dir -r requirements.txt \
+    && chmod +x entrypoint.sh
 
 # Copy application source
 COPY . .
 
 EXPOSE 4567
 
-CMD ["python", "app.py"]
+ENTRYPOINT ["/bin/sh", "entrypoint.sh"]

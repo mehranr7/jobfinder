@@ -47,6 +47,7 @@
             </div>
         </div>
 
+        {% if evaluator_enabled %}
         <div id="evalTerminalContainer"
             style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <div
@@ -63,6 +64,7 @@
                 <pre id="evalTerminalOutput" style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">Waiting for jobs to evaluate...</pre>
             </div>
         </div>
+        {% endif %}
 
         <div class="controls">
             <div class="control-group">
@@ -218,6 +220,9 @@
         </div>
     </div>
 
+    <script>
+        const EVALUATOR_ENABLED = {{ 'true' if evaluator_enabled else 'false' }};
+    </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 

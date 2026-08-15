@@ -1,17 +1,36 @@
 import time
 import json
 import os
+import re
 import yaml
 import traceback
 import database
-import google.generativeai as genai
+
+# Suppress FutureWarning from google.generativeai at import time
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+try:
+    from google import genai
+    from google.genai import types as genai_types
+    GENAI_AVAILABLE = True
+except ImportError:
+    try:
+        import google.generativeai as _legacy_genai
+        GENAI_AVAILABLE = True
+        genai = None  # signals to use legacy path
+        _legacy_genai_module = _legacy_genai
+    except ImportError:
+        GENAI_AVAILABLE = False
+
+import PyPDF2
 
 STATE_RUNNING = "RUNNING"
 STATE_PAUSED = "PAUSED"
 STATE_STOPPED = "STOPPED"
 current_state = STATE_RUNNING
 
-# Cache for uploaded Gemini files
+# Cache for CV text extraction
 uploaded_files_cache = {}
 
 def load_config():
@@ -44,11 +63,9 @@ def check_state(log_queue=None):
         
     return True
 
-import PyPDF2
-
 def get_uploaded_cvs(cv_paths, log_queue=None):
     """
-    Extracts text locally from PDF CVs to bypass upload API limits.
+    Extracts text locally from PDF CVs.
     """
     global uploaded_files_cache
     gemini_files = []
@@ -58,12 +75,11 @@ def get_uploaded_cvs(cv_paths, log_queue=None):
             emit_log(f"[!] CV file not found: {path}", log_queue)
             continue
             
-        # Check cache
         if path in uploaded_files_cache:
             gemini_files.append(f"--- CV: {path} ---\n" + uploaded_files_cache[path])
             continue
             
-        emit_log(f"Extracting text from {path} locally...", log_queue)
+        emit_log(f"Extracting text from {path}...", log_queue)
         try:
             text = ""
             with open(path, "rb") as f:
@@ -78,11 +94,75 @@ def get_uploaded_cvs(cv_paths, log_queue=None):
             
     return gemini_files
 
+def _parse_response(res_text):
+    """Parse JSON from Gemini response text, stripping markdown fences."""
+    if res_text.startswith("```json"):
+        res_text = res_text[7:]
+    elif res_text.startswith("```"):
+        res_text = res_text[3:]
+    if res_text.endswith("```"):
+        res_text = res_text[:-3]
+    res_text = res_text.strip()
+    
+    # Defensively fix truncated JSON
+    if not res_text.endswith("}"):
+        if not res_text.endswith('"'):
+            res_text += '"'
+        res_text += "\n}"
+    
+    try:
+        return json.loads(res_text)
+    except json.JSONDecodeError:
+        match = re.search(r'\{.*\}', res_text, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+        raise
+
+def _call_gemini(api_key, model_name, instruction_text, prompt_parts):
+    """
+    Calls the Gemini API using whichever SDK version is available.
+    Returns the response text.
+    """
+    # Try new google-genai SDK first
+    if GENAI_AVAILABLE and genai is not None:
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=model_name,
+            contents="\n\n".join(prompt_parts),
+            config=genai_types.GenerateContentConfig(
+                system_instruction=instruction_text,
+                response_mime_type="application/json",
+                max_output_tokens=8192
+            )
+        )
+        return response.text.strip()
+    
+    # Fallback: legacy google.generativeai SDK
+    if GENAI_AVAILABLE and genai is None:
+        _legacy_genai_module.configure(api_key=api_key)
+        model = _legacy_genai_module.GenerativeModel(
+            model_name,
+            system_instruction=instruction_text,
+            generation_config={
+                "response_mime_type": "application/json",
+                "max_output_tokens": 8192
+            }
+        )
+        response = model.generate_content(prompt_parts)
+        return response.text.strip()
+    
+    raise RuntimeError("No Gemini SDK available. Install google-genai: pip install google-genai")
+
 def main_loop(log_queue=None):
     global current_state
     current_state = STATE_RUNNING
     
     emit_log("--- EVALUATOR STARTED ---", log_queue)
+    
+    if not GENAI_AVAILABLE:
+        emit_log("[!] Gemini SDK not installed. Install with: pip install google-genai", log_queue)
+        current_state = STATE_STOPPED
+        return
     
     config = load_config()
     api_key = config.get("gemini_api_key", "")
@@ -91,9 +171,7 @@ def main_loop(log_queue=None):
         current_state = STATE_STOPPED
         return
         
-    genai.configure(api_key=api_key)
-    
-    model_name = config.get("evaluator_model", "gemini-1.5-flash")
+    model_name = config.get("evaluator_model", "gemini-2.5-flash")
     delay_s = config.get("evaluator_delay_s", 5)
     cv_paths = config.get("cv_paths", [])
     
@@ -105,29 +183,17 @@ def main_loop(log_queue=None):
     with open("llm_instruction.txt", "r", encoding="utf-8") as f:
         instruction_text = f.read()
 
-    # Upload CVs
     if cv_paths:
         gemini_cvs = get_uploaded_cvs(cv_paths, log_queue)
     else:
         emit_log("[!] No CVs configured in config.yml. Evaluation will run without CVs.", log_queue)
         gemini_cvs = []
-
-    # Initialize Model with JSON enforcement
-    model = genai.GenerativeModel(
-        model_name,
-        system_instruction=instruction_text,
-        generation_config={
-            "response_mime_type": "application/json",
-            "max_output_tokens": 8192
-        }
-    )
     
     while current_state == STATE_RUNNING:
         if not check_state(log_queue):
             break
             
         try:
-            # Fetch unevaluated unseen jobs
             conn = database.get_connection()
             c = conn.cursor()
             c.execute("SELECT * FROM jobs WHERE status = 'Unseen' AND (eval_score IS NULL OR eval_reason IS NULL) ORDER BY discovered_at DESC")
@@ -135,7 +201,6 @@ def main_loop(log_queue=None):
             conn.close()
             
             if not jobs_to_evaluate:
-                # No jobs, sleep and poll again
                 time.sleep(10)
                 continue
                 
@@ -145,69 +210,32 @@ def main_loop(log_queue=None):
                     
                 emit_log(f"\nEvaluating: {job['title']}...", log_queue)
                 
-                # Build prompt
                 job_details = f"Job Title: {job['title']}\nCompany: {job['company']}\n\n"
-                
                 pos_kws = job.get('keywords') or ""
                 neg_kws = job.get('negative_keywords') or ""
                 if pos_kws:
                     job_details += f"Matched Positive Keywords: {pos_kws}\n"
                 if neg_kws:
                     job_details += f"Matched Negative Keywords: {neg_kws}\n"
-                    
                 pos_desc = job.get('description_tags') or ""
                 neg_desc = job.get('neg_description_tags') or ""
                 if pos_desc:
                     job_details += f"Matched Positive Description Tags: {pos_desc}\n"
                 if neg_desc:
                     job_details += f"Matched Negative Description Tags: {neg_desc}\n"
-                    
                 job_details += f"\nJob Description:\n{job['description']}"
                 
-                prompt = [job_details]
-                # Append CV files to prompt
-                prompt.extend(gemini_cvs)
+                prompt = [job_details] + gemini_cvs
                 
                 try:
-                    response = model.generate_content(prompt)
-                    res_text = response.text.strip()
-                    
-                    # Parse JSON and strip markdown backticks
-                    res_text = response.text.strip()
-                    if res_text.startswith("```json"):
-                        res_text = res_text[7:]
-                    elif res_text.startswith("```"):
-                        res_text = res_text[3:]
-                        
-                    if res_text.endswith("```"):
-                        res_text = res_text[:-3]
-                        
-                    res_text = res_text.strip()
-                    
-                    # Defensively fix truncated JSON (missing closing braces)
-                    if not res_text.endswith("}"):
-                        if not res_text.endswith('"'):
-                            res_text += '"'
-                        res_text += "\n}"
-                        
+                    res_text = _call_gemini(api_key, model_name, instruction_text, prompt)
                     emit_log(f"Gemini raw response: {res_text}", log_queue)
                     
-                    try:
-                        data = json.loads(res_text)
-                    except json.JSONDecodeError:
-                        # Fallback: find the JSON block using regex if basic stripping failed
-                        import re
-                        match = re.search(r'\{.*\}', res_text, re.DOTALL)
-                        if match:
-                            res_text = match.group(0)
-                        data = json.loads(res_text)
-                    score = data.get("eval_score", 0)
+                    data = _parse_response(res_text)
+                    score = max(0, min(100, int(data.get("eval_score", 0))))
                     reason = data.get("eval_reason", "No reason provided.")
                     selected_cv = data.get("selected_cv", "")
                     cover_letter = data.get("cover_letter", "")
-                    
-                    # Ensure score is integer and bounded
-                    score = max(0, min(100, int(score)))
                     
                     database.update_job_eval(job['link'], score, reason, selected_cv, cover_letter)
                     emit_log(f"  -> Score: {score}/100, Best CV: {selected_cv}", log_queue)
@@ -220,10 +248,10 @@ def main_loop(log_queue=None):
                 except Exception as e:
                     emit_log(f"[!] Evaluation failed: {e}", log_queue)
                     if "429" in str(e) or "Quota" in str(e):
-                        emit_log(f"[!] Rate limit or quota exceeded. Sleeping for 60 seconds before retrying...", log_queue)
+                        emit_log(f"[!] Rate limit exceeded. Sleeping 60s before retrying...", log_queue)
                         time.sleep(60)
-                        break # Break inner loop, fetch jobs again after sleep
-                # Rate limit cooldown
+                        break
+                        
                 emit_log(f"Cooldown: Waiting {delay_s}s for rate limits...", log_queue)
                 time.sleep(delay_s)
                 
@@ -236,25 +264,27 @@ def main_loop(log_queue=None):
         log_queue.put("DONE")
 
 def evaluate_job_by_link(link, log_queue=None):
+    if not GENAI_AVAILABLE:
+        emit_log("[!] Gemini SDK not installed.", log_queue)
+        return False
+
     config = load_config()
     api_key = config.get("gemini_api_key", "")
     if not api_key or api_key == "YOUR_GEMINI_API_KEY_HERE":
         emit_log("[!] Gemini API key not set.", log_queue)
         return False
-    genai.configure(api_key=api_key)
-    model_name = config.get("evaluator_model", "gemini-1.5-flash")
+
+    model_name = config.get("evaluator_model", "gemini-2.5-flash")
+
     if not os.path.exists("llm_instruction.txt"):
         with open("llm_instruction.txt", "w", encoding="utf-8") as f:
             f.write('You are an expert HR recruiter evaluating a job match. Analyze the job description against my CVs. Return JSON with "eval_score" (0-100) and "eval_reason" (1-3 sentences).')
     with open("llm_instruction.txt", "r", encoding="utf-8") as f:
         instruction_text = f.read()
+
     cv_paths = config.get("cv_paths", [])
     gemini_cvs = get_uploaded_cvs(cv_paths, log_queue) if cv_paths else []
-    model = genai.GenerativeModel(
-        model_name,
-        system_instruction=instruction_text,
-        generation_config={"response_mime_type": "application/json", "max_output_tokens": 8192}
-    )
+
     conn = database.get_connection()
     c = conn.cursor()
     c.execute("SELECT * FROM jobs WHERE link = ?", (link,))
@@ -262,6 +292,7 @@ def evaluate_job_by_link(link, log_queue=None):
     conn.close()
     if not job_row:
         return False
+
     job = dict(job_row)
     emit_log(f"\nManually Evaluating: {job['title']}...", log_queue)
     
@@ -280,39 +311,15 @@ def evaluate_job_by_link(link, log_queue=None):
         job_details += f"Matched Negative Description Tags: {neg_desc}\n"
     job_details += f"\nJob Description:\n{job['description']}"
     
-    prompt = [job_details]
-    prompt.extend(gemini_cvs)
+    prompt = [job_details] + gemini_cvs
     
     try:
-        response = model.generate_content(prompt)
-        res_text = response.text.strip()
-        if res_text.startswith("```json"):
-            res_text = res_text[7:]
-        elif res_text.startswith("```"):
-            res_text = res_text[3:]
-        if res_text.endswith("```"):
-            res_text = res_text[:-3]
-        res_text = res_text.strip()
-        if not res_text.endswith("}"):
-            if not res_text.endswith('"'):
-                res_text += '"'
-            res_text += "\n}"
-            
-        import json
-        try:
-            data = json.loads(res_text)
-        except json.JSONDecodeError:
-            import re
-            match = re.search(r'\{.*\}', res_text, re.DOTALL)
-            if match:
-                res_text = match.group(0)
-            data = json.loads(res_text)
-            
-        score = data.get("eval_score", 0)
+        res_text = _call_gemini(api_key, model_name, instruction_text, prompt)
+        data = _parse_response(res_text)
+        score = max(0, min(100, int(data.get("eval_score", 0))))
         reason = data.get("eval_reason", "No reason provided.")
         selected_cv = data.get("selected_cv", "")
         cover_letter = data.get("cover_letter", "")
-        score = max(0, min(100, int(score)))
         
         database.update_job_eval(job['link'], score, reason, selected_cv, cover_letter)
         emit_log(f"  -> Score: {score}/100, Best CV: {selected_cv}", log_queue)

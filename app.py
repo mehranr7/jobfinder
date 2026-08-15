@@ -38,19 +38,32 @@ def get_config_options():
     except Exception:
         return ["Not Applied", "Applied", "Rejected", "Interview", "Offer"], ["Software", "Hardware", "Data", "General"], 20
 
+def get_evaluator_enabled():
+    try:
+        with open("config.yml", "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        # Default to True so existing configs without the key keep working
+        return config.get("enable_evaluator", True)
+    except Exception:
+        return True
+
 @app.route('/')
 def index():
     jobs = database.get_all_jobs()
     threshold = get_special_threshold()
     app_states, cv_types, page_size = get_config_options()
-    return render_template('index.html', jobs=jobs, special_threshold=threshold, page_size=page_size, app_states=app_states, cv_types=cv_types)
+    evaluator_enabled = get_evaluator_enabled()
+    return render_template('index.html', jobs=jobs, special_threshold=threshold, page_size=page_size,
+                           app_states=app_states, cv_types=cv_types, evaluator_enabled=evaluator_enabled)
 
 @app.route('/api/get_job_cards')
 def get_job_cards():
     jobs = database.get_all_jobs()
     threshold = get_special_threshold()
     app_states, cv_types, _ = get_config_options()
-    return render_template('job_cards.html', jobs=jobs, special_threshold=threshold, app_states=app_states, cv_types=cv_types)
+    evaluator_enabled = get_evaluator_enabled()
+    return render_template('job_cards.html', jobs=jobs, special_threshold=threshold,
+                           app_states=app_states, cv_types=cv_types, evaluator_enabled=evaluator_enabled)
 
 @app.route('/api/change_status', methods=['POST'])
 def change_status():
@@ -258,10 +271,14 @@ def stop_scraper():
 
 @app.route('/api/get_evaluator_state', methods=['GET'])
 def get_evaluator_state():
+    if not get_evaluator_enabled():
+        return jsonify({"state": "DISABLED"})
     return jsonify({"state": evaluator.current_state})
 
 @app.route('/api/toggle_evaluator', methods=['POST'])
 def toggle_evaluator():
+    if not get_evaluator_enabled():
+        return jsonify({"success": False, "error": "Evaluator is disabled in config.yml"}), 503
     if evaluator.current_state == evaluator.STATE_PAUSED:
         evaluator.current_state = evaluator.STATE_RUNNING
     else:
@@ -270,6 +287,8 @@ def toggle_evaluator():
 
 @app.route('/api/evaluate_job', methods=['POST'])
 def evaluate_job():
+    if not get_evaluator_enabled():
+        return jsonify({'error': 'Evaluator is disabled. Set enable_evaluator: true in config.yml'}), 503
     data = request.get_json()
     link = data.get('link')
     if not link:
@@ -304,6 +323,11 @@ def broadcast_eval_log(msg):
 
 @app.route('/api/eval_stream')
 def eval_stream():
+    if not get_evaluator_enabled():
+        # Return an immediate close event so the client doesn't keep reconnecting
+        def empty_stream():
+            yield "event: close\ndata: \n\n"
+        return Response(empty_stream(), mimetype='text/event-stream')
     def generate():
         q = queue.Queue(maxsize=100)
         evaluator_log_queues.append(q)
@@ -325,17 +349,33 @@ def get_port():
     except Exception:
         return 5050
 
-import evaluator
+# Conditionally import and start the evaluator
+if get_evaluator_enabled():
+    import evaluator
+else:
+    # Create a lightweight stub so routes that reference `evaluator` don't crash
+    import types
+    evaluator = types.SimpleNamespace(
+        current_state="DISABLED",
+        STATE_RUNNING="RUNNING",
+        STATE_PAUSED="PAUSED",
+        STATE_STOPPED="STOPPED",
+    )
 
 if __name__ == '__main__':
     # Initialize DB on startup
     database.init_db()
     
-    # Start Evaluator Daemon
-    eval_thread = threading.Thread(target=evaluator.main_loop, args=(broadcast_eval_log,), daemon=True)
-    eval_thread.start()
-    
     port = get_port()
+    
+    # Start Evaluator Daemon only if enabled
+    if get_evaluator_enabled():
+        eval_thread = threading.Thread(target=evaluator.main_loop, args=(broadcast_eval_log,), daemon=True)
+        eval_thread.start()
+        print("✅ Gemini Evaluator started.")
+    else:
+        print("ℹ️  Gemini Evaluator is disabled (enable_evaluator: false in config.yml).")
+    
     print("\n" + "="*50)
     print("🚀 JOBFINDER SERVER IS RUNNING!")
     print(f"👉 CLICK HERE TO OPEN: http://localhost:{port}")
