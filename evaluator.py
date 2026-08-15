@@ -5,6 +5,7 @@ import re
 import yaml
 import traceback
 import database
+import utils
 
 # Suppress FutureWarning from google.generativeai at import time
 import warnings
@@ -23,7 +24,11 @@ except ImportError:
     except ImportError:
         GENAI_AVAILABLE = False
 
-import PyPDF2
+try:
+    import PyPDF2
+    PYPDF2_AVAILABLE = True
+except ImportError:
+    PYPDF2_AVAILABLE = False
 
 STATE_RUNNING = "RUNNING"
 STATE_PAUSED = "PAUSED"
@@ -34,8 +39,7 @@ current_state = STATE_RUNNING
 uploaded_files_cache = {}
 
 def load_config():
-    with open("config.yml", "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    return utils.load_config()
 
 def emit_log(msg, log_queue=None):
     print(msg)
@@ -79,6 +83,10 @@ def get_uploaded_cvs(cv_paths, log_queue=None):
             gemini_files.append(f"--- CV: {path} ---\n" + uploaded_files_cache[path])
             continue
             
+        if not PYPDF2_AVAILABLE:
+            emit_log("[!] PyPDF2 is not installed. Skipping PDF CV text extraction.", log_queue)
+            continue
+
         emit_log(f"Extracting text from {path}...", log_queue)
         try:
             text = ""

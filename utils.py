@@ -1,6 +1,33 @@
 import re
+import os
+import yaml
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
+
+def load_config():
+    """
+    Safely loads configuration from config.yml.
+    Falls back to config.example.yml or an empty dictionary if config.yml is missing or invalid.
+    """
+    base_dir = os.path.dirname(__file__)
+    config_path = os.path.join(base_dir, "config.yml")
+    example_path = os.path.join(base_dir, "config.example.yml")
+    
+    if os.path.isfile(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"[!] Warning: Error reading {config_path}: {e}")
+            
+    if os.path.isfile(example_path):
+        try:
+            with open(example_path, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f) or {}
+        except Exception:
+            pass
+            
+    return {}
 
 def truncate(s, length=60):
     return s if len(s) <= length else s[:length-3] + "..."

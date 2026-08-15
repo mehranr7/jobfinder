@@ -1,6 +1,7 @@
 .git
 .gitignore
 *.db
+data/
 __pycache__/
 *.pyc
 *.log

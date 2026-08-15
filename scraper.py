@@ -54,8 +54,7 @@ def load_config():
     global STELLENWERK_LINK, STELLENWERK_PAGES, STEPSTONE_LINK, STEPSTONE_PAGES, XING_LINK, XING_PAGES
     global TARGET_URLS, KEYWORDS, NEGATIVE_KEYWORDS, DELAY_MIN_MS, DELAY_MAX_MS
 
-    with open("config.yml", "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+    config = utils.load_config()
 
     STELLENWERK_LINK = config.get("stellenwerk_link", "")
     STELLENWERK_PAGES = config.get("stellenwerk_pages", 1)

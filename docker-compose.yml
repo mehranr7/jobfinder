@@ -5,10 +5,13 @@ services:
     ports:
       - "4567:4567"
     volumes:
-      - ./jobs.db:/app/jobs.db
+      # Persist database in data/ directory (avoids single-file mount issues)
+      - ./data:/app/data
+      # Mount configuration
       - ./config.yml:/app/config.yml
-      - ./llm_instruction.txt:/app/llm_instruction.txt
+      # Mount local CV folder
       - ./cvs:/app/cvs
+      # Mount static and templates for live frontend reloading
       - ./static:/app/static
       - ./templates:/app/templates
     restart: unless-stopped

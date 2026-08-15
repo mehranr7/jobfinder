@@ -1,7 +1,20 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "jobs.db")
+BASE_DIR = os.path.dirname(__file__)
+DATA_DIR = os.path.join(BASE_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+ROOT_DB = os.path.join(BASE_DIR, "jobs.db")
+DATA_DB = os.path.join(DATA_DIR, "jobs.db")
+
+# Use data/jobs.db if it exists; otherwise use root jobs.db if it's a valid file; otherwise default to data/jobs.db
+if os.path.isfile(DATA_DB):
+    DB_PATH = DATA_DB
+elif os.path.isfile(ROOT_DB):
+    DB_PATH = ROOT_DB
+else:
+    DB_PATH = DATA_DB
 
 def get_connection():
     # Detect if we are in a multithreaded context (like Flask)

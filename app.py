@@ -16,36 +16,28 @@ import yaml
 app = Flask(__name__)
 
 def get_special_threshold():
-    try:
-        with open("config.yml", "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        return config.get("special_keyword_threshold", 3)
-    except Exception:
-        return 3
+    config = utils.load_config()
+    return config.get("special_keyword_threshold", 3)
 
 @app.template_filter('timeago')
 def timeago_filter(dt_string):
     return utils.timeago_filter(dt_string)
 
 def get_config_options():
-    try:
-        with open("config.yml", "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        app_states = config.get("app_states", ["Not Applied", "Applied", "Rejected", "Interview", "Offer"])
-        cv_types = config.get("cv_types", ["Software", "Hardware", "Data", "General"])
-        page_size = config.get("page_size", 20)
-        return app_states, cv_types, page_size
-    except Exception:
-        return ["Not Applied", "Applied", "Rejected", "Interview", "Offer"], ["Software", "Hardware", "Data", "General"], 20
+    config = utils.load_config()
+    app_states = config.get("app_states", ["Not Applied", "Applied", "Rejected", "Interview", "Offer"])
+    cv_types = config.get("cv_types", ["Software", "Hardware", "Data", "General"])
+    page_size = config.get("page_size", 20)
+    return app_states, cv_types, page_size
 
 def get_evaluator_enabled():
-    try:
-        with open("config.yml", "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        # Default to True so existing configs without the key keep working
-        return config.get("enable_evaluator", True)
-    except Exception:
-        return True
+    config = utils.load_config()
+    enabled = config.get("enable_evaluator", True)
+    api_key = config.get("gemini_api_key", "")
+    # If the user explicitly disabled it or has no valid API key configured, disable gracefully
+    if not enabled or not api_key or api_key == "YOUR_GEMINI_API_KEY_HERE":
+        return False
+    return True
 
 @app.route('/')
 def index():
@@ -342,12 +334,8 @@ def eval_stream():
     return Response(generate(), mimetype='text/event-stream')
 
 def get_port():
-    try:
-        with open("config.yml", "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        return config.get("port", 5050)
-    except Exception:
-        return 5050
+    config = utils.load_config()
+    return config.get("port", 4567)
 
 # Conditionally import and start the evaluator
 if get_evaluator_enabled():
