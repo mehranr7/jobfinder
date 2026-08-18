@@ -20,6 +20,7 @@ cv_types:
 # ── Scraper Settings ──────────────────────────────────────
 delay_min_ms: 1000
 delay_max_ms: 1500
+block_heavy_resources: true
 special_keyword_threshold: 3
 
 stellenwerk_link: "https://www.stellenwerk.de/CITY"
@@ -30,6 +31,17 @@ stepstone_pages: 1
 
 xing_link: "YOUR_XING_SEARCH_URL"
 xing_pages: 5
+
+# Additional public adapters (leave blank to disable). Every *_link accepts
+# either one URL string or a YAML list of URLs for multiple target markets.
+talent_link: ""
+talent_pages: 1
+
+kimeta_link: ""
+kimeta_pages: 1  # Kimeta exposes only its first result batch without a crawl challenge
+
+glassdoor_link: ""
+glassdoor_pages: 1
 
 # ── AI Evaluator ──────────────────────────────────────────
 # Set to false to disable AI evaluation entirely (no API key required)

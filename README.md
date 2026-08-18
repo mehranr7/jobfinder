@@ -6,7 +6,7 @@ Built with Python, Flask, Playwright, and Docker. Designed to run locally with z
 
 ## Features
 
-- **Multi-Platform Scraping** — Aggregates listings from Stellenwerk, Stepstone, and Xing with automatic pagination and deduplication across platforms.
+- **Multi-Platform Scraping** — Aggregates listings from Stellenwerk, Stepstone, Xing, Talent.com, Kimeta, and Glassdoor with source-aware pagination and cross-platform deduplication.
 - **AI-Powered Evaluation** — A background daemon continuously scores new jobs against your CV(s) using Google Gemini, producing a 0–100 match score, a reasoning summary, a recommended CV variant, and a draft cover letter.
 - **Live Streaming UI** — Server-Sent Events push scraper and evaluator logs to the browser in real time. New job cards appear dynamically without page reloads.
 - **Advanced Filtering & Sorting** — Multi-select keyword and negative-keyword filters, platform filters, status filters, and sort-by-date/score controls — all client-side for instant response.
@@ -95,9 +95,14 @@ python app.py
 | `evaluator_model` | Gemini model for evaluation | `gemini-2.5-flash` |
 | `evaluator_delay_s` | Seconds between evaluations (rate limiting) | `15` |
 | `cv_paths` | List of PDF CV file paths | `[]` |
-| `stellenwerk_link` | Stellenwerk search URL | — |
-| `stepstone_link` | Stepstone search URL | — |
-| `xing_link` | Xing search URL | — |
+| `stellenwerk_link` | Stellenwerk search URL or list of URLs | — |
+| `stepstone_link` | Stepstone search URL or list of URLs | — |
+| `xing_link` | Xing search URL or list of URLs | — |
+| `talent_link` | Talent.com search URL(s), replacing Neuvoo | — |
+| `kimeta_link` | Kimeta search URL(s), first result batch only | — |
+| `glassdoor_link` | Glassdoor search URL or list of URLs | — |
+| `*_pages` | Page count for the matching source | `1` |
+| `block_heavy_resources` | Skip images, fonts, and media during browser extraction | `true` |
 | `keywords` | Positive keywords for matching | `[]` |
 | `negative_keywords` | Negative keywords for filtering | `[]` |
 | `app_states` | Custom application pipeline stages | `[Unseen, Applied, ...]` |
@@ -109,6 +114,8 @@ python app.py
 jobfinder/
 ├── app.py                 # Flask application and API routes
 ├── scraper.py             # Multi-platform scraping engine
+├── source_registry.py     # Adapter registry and shared lightweight helpers
+├── public_sources.py      # Talent, Kimeta, and Glassdoor adapters
 ├── evaluator.py           # Gemini-powered job evaluation daemon
 ├── database.py            # SQLite data access layer
 ├── utils.py               # Text cleaning, date parsing, helpers
@@ -124,6 +131,17 @@ jobfinder/
     ├── job_card.html       # Individual job card component
     └── job_cards.html      # Job card list renderer
 ```
+
+Optional local-only adapters can be placed in `private_sources/`. That directory
+is git-ignored and discovered at runtime, so public builds remain fully functional
+when it is absent. Their configuration remains local and is intentionally omitted
+from `config.example.yml`.
+Every `*_link` setting accepts either one URL or a YAML list of URLs, allowing a
+source to cover multiple markets such as Hamburg and Germany-wide remote roles.
+
+Before enabling a portal, review its current terms and robots policy and obtain
+permission where required. An empty link disables a source without affecting the
+rest of the scraper.
 
 ## License
 

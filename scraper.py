@@ -1,13 +1,15 @@
-import sys
+import os
 import re
+import sys
 import random
 import time
 from urllib.parse import urljoin
-import yaml
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 import database
 import utils
+from public_sources import PUBLIC_SOURCES
+from source_registry import SourceAdapter, build_targets, load_private_sources, set_query_parameter
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -38,89 +40,32 @@ def check_state(log_queue=None):
         
     return True
 
-STELLENWERK_LINK = ""
-STELLENWERK_PAGES = 1
-STEPSTONE_LINK = ""
-STEPSTONE_PAGES = 1
-XING_LINK = ""
-XING_PAGES = 1
 TARGET_URLS = []
+SOURCE_ADAPTERS = {}
 KEYWORDS = []
 NEGATIVE_KEYWORDS = []
 DELAY_MIN_MS = 1500
 DELAY_MAX_MS = 3500
+BLOCK_HEAVY_RESOURCES = True
 
 def load_config():
-    global STELLENWERK_LINK, STELLENWERK_PAGES, STEPSTONE_LINK, STEPSTONE_PAGES, XING_LINK, XING_PAGES
-    global TARGET_URLS, KEYWORDS, NEGATIVE_KEYWORDS, DELAY_MIN_MS, DELAY_MAX_MS
+    global TARGET_URLS, SOURCE_ADAPTERS, KEYWORDS, NEGATIVE_KEYWORDS
+    global DELAY_MIN_MS, DELAY_MAX_MS, BLOCK_HEAVY_RESOURCES
 
     config = utils.load_config()
 
-    STELLENWERK_LINK = config.get("stellenwerk_link", "")
-    STELLENWERK_PAGES = config.get("stellenwerk_pages", 1)
-    STEPSTONE_LINK = config.get("stepstone_link", "")
-    STEPSTONE_PAGES = config.get("stepstone_pages", 1)
-    XING_LINK = config.get("xing_link", "")
-    XING_PAGES = config.get("xing_pages", 1)
-
-    urls = []
-    if STELLENWERK_LINK:
-        sep = "&" if "?" in STELLENWERK_LINK else "?"
-        for i in range(STELLENWERK_PAGES):
-            offset = i * 10
-            urls.append({
-                "url": f"{STELLENWERK_LINK}{sep}pagination%5Bstart%5D={offset}",
-                "domain": "Stellenwerk",
-                "page": i + 1
-            })
-            
-    if STEPSTONE_LINK:
-        urls.append({
-            "url": STEPSTONE_LINK,
-            "domain": "Stepstone",
-            "page": 1
-        })
-        for i in range(2, STEPSTONE_PAGES + 1):
-            if "?" in STEPSTONE_LINK:
-                parts = STEPSTONE_LINK.split("?", 1)
-                urls.append({
-                    "url": f"{parts[0]}?page={i}&{parts[1]}",
-                    "domain": "Stepstone",
-                    "page": i
-                })
-            else:
-                urls.append({
-                    "url": f"{STEPSTONE_LINK}?page={i}",
-                    "domain": "Stepstone",
-                    "page": i
-                })
-                
-    if XING_LINK:
-        urls.append({
-            "url": XING_LINK,
-            "domain": "Xing",
-            "page": 1
-        })
-        for i in range(2, XING_PAGES + 1):
-            if "?" in XING_LINK:
-                parts = XING_LINK.split("?", 1)
-                urls.append({
-                    "url": f"{parts[0]}?page={i}&{parts[1]}",
-                    "domain": "Xing",
-                    "page": i
-                })
-            else:
-                urls.append({
-                    "url": f"{XING_LINK}?page={i}",
-                    "domain": "Xing",
-                    "page": i
-                })
-                
-    TARGET_URLS = urls
+    adapters = [
+        *_legacy_sources(),
+        *PUBLIC_SOURCES,
+        *load_private_sources(os.path.dirname(__file__)),
+    ]
+    SOURCE_ADAPTERS = {adapter.name: adapter for adapter in adapters}
+    TARGET_URLS = build_targets(config, adapters)
     KEYWORDS = config.get("keywords", [])
     NEGATIVE_KEYWORDS = config.get("negative_keywords", [])
     DELAY_MIN_MS = config.get("delay_min_ms", 1500)
     DELAY_MAX_MS = config.get("delay_max_ms", 3500)
+    BLOCK_HEAVY_RESOURCES = config.get("block_heavy_resources", True)
 
 def scrape_stellenwerk(page, url):
     """
@@ -332,6 +277,45 @@ def scrape_xing(page, url):
             })
     return jobs
 
+
+def _first_page_then_query(parameter, value_for_page=lambda page_number: page_number):
+    def builder(url, page_number):
+        if page_number == 1 and parameter != "pagination[start]":
+            return url
+        return set_query_parameter(url, parameter, value_for_page(page_number))
+
+    return builder
+
+
+def _legacy_sources():
+    """Expose existing scrapers through the same adapter contract as new sources."""
+
+    return (
+        SourceAdapter(
+            name="Stellenwerk",
+            link_key="stellenwerk_link",
+            pages_key="stellenwerk_pages",
+            page_url=_first_page_then_query(
+                "pagination[start]", lambda page_number: (page_number - 1) * 10
+            ),
+            scrape=lambda page, url, keywords, negative_keywords: scrape_stellenwerk(page, url),
+        ),
+        SourceAdapter(
+            name="Stepstone",
+            link_key="stepstone_link",
+            pages_key="stepstone_pages",
+            page_url=_first_page_then_query("page"),
+            scrape=lambda page, url, keywords, negative_keywords: scrape_stepstone(page, url),
+        ),
+        SourceAdapter(
+            name="Xing",
+            link_key="xing_link",
+            pages_key="xing_pages",
+            page_url=_first_page_then_query("page"),
+            scrape=lambda page, url, keywords, negative_keywords: scrape_xing(page, url),
+        ),
+    )
+
 def emit_log(msg, log_queue=None):
     """
     Prints a message to the console and pushes it to the log_queue if provided.
@@ -362,6 +346,13 @@ def main(log_queue=None):
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
             locale="de-DE"
         )
+        if BLOCK_HEAVY_RESOURCES:
+            page.route(
+                "**/*",
+                lambda route: route.abort()
+                if route.request.resource_type in {"font", "image", "media"}
+                else route.continue_(),
+            )
         
         current_domain = ""
         
@@ -381,14 +372,15 @@ def main(log_queue=None):
                 emit_log(f"\n[ {domain_name} ]", log_queue)
                 current_domain = domain_name
 
-            if domain_name == "Stellenwerk":
-                jobs = scrape_stellenwerk(page, url)
-            elif domain_name == "Stepstone":
-                jobs = scrape_stepstone(page, url)
-            elif domain_name == "Xing":
-                jobs = scrape_xing(page, url)
-            else:
+            adapter = SOURCE_ADAPTERS.get(domain_name)
+            if adapter is None:
                 emit_log(f"Unknown domain for URL: {url}", log_queue)
+                continue
+
+            try:
+                jobs = adapter.scrape(page, url, KEYWORDS, NEGATIVE_KEYWORDS)
+            except Exception as exc:
+                emit_log(f"  [!] {domain_name} listing extraction failed: {exc}", log_queue)
                 continue
                 
             total_jobs = len(jobs)
@@ -423,14 +415,31 @@ def main(log_queue=None):
                 
                 # Deep Scrape
                 try:
-                    try:
-                        page.goto(job['link'], timeout=20000, wait_until='domcontentloaded')
-                    except Exception as goto_err:
-                        print(f"Goto error (proceeding to extract anyway): {goto_err}")
-                        
-                    page.wait_for_timeout(1500) # Wait for React/dynamic content to load
-                    
-                    text_content = page.locator('body').inner_text()
+                    text_content = None
+                    if adapter.fetch_description is not None:
+                        text_content = adapter.fetch_description(job)
+
+                    if not text_content:
+                        if adapter.navigate_to_detail:
+                            try:
+                                response = page.goto(
+                                    job.get('_detail_url', job['link']),
+                                    timeout=20000,
+                                    wait_until='domcontentloaded'
+                                )
+                            except Exception as goto_err:
+                                print(f"Goto error (proceeding to extract anyway): {goto_err}")
+                                response = None
+
+                            if response is not None and response.status >= 400:
+                                raise ValueError(f"Detail page returned HTTP {response.status}")
+
+                            page.wait_for_timeout(1500) # Wait for dynamic content to load
+                        if adapter.extract_description is not None:
+                            text_content = adapter.extract_description(page, job)
+                        if not text_content:
+                            text_content = page.locator('body').inner_text()
+
                     if len(text_content) < 150:
                         raise ValueError("Extracted text is too short, falling back.")
                         
@@ -540,9 +549,12 @@ def main(log_queue=None):
                     unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
                     job['neg_description_tags'] = ", ".join(unique_neg_tags)
                     
-                # Remove preview_text before DB insertion as it's not a DB column
-                if 'preview_text' in job:
-                    del job['preview_text']
+                # Remove parser-only fields before DB insertion.
+                internal_keys = [
+                    key for key in job if key == 'preview_text' or key.startswith('_')
+                ]
+                for internal_key in internal_keys:
+                    del job[internal_key]
                     
                 # Insert into DB
                 database.insert_job(job)

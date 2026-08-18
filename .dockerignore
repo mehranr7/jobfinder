@@ -11,6 +11,7 @@ llm_instruction.txt
 docker-compose.yml
 .dockerignore
 .agents/
+private_sources/
 .vscode/
 .idea/
 README.md

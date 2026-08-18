@@ -44,6 +44,8 @@ Thumbs.db
 config.yml
 cvs/
 llm_instruction.txt
+private_sources/
+keyword_backups/
 
 # Generated files
 results.html

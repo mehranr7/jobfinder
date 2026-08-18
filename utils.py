@@ -109,8 +109,8 @@ def timeago_filter(dt_string):
         return f"{days} day{'s' if days != 1 else ''} ago"
         
     weeks = days // 7
-    if weeks < 4:
+    if days < 30:
         return f"{weeks} week{'s' if weeks != 1 else ''} ago"
         
-    months = days // 30
+    months = max(1, days // 30)
     return f"{months} month{'s' if months != 1 else ''} ago"

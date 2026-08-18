@@ -9,9 +9,13 @@ services:
       - ./data:/app/data
       # Mount configuration
       - ./config.yml:/app/config.yml
+      # Mount the private evaluator instruction without baking it into the image
+      - ./llm_instruction.txt:/app/llm_instruction.txt:ro
       # Mount local CV folder
       - ./cvs:/app/cvs
       # Mount static and templates for live frontend reloading
       - ./static:/app/static
       - ./templates:/app/templates
+      # Optional local-only source adapters (git-ignored, never baked into image)
+      - ./private_sources:/app/private_sources:ro
     restart: unless-stopped
