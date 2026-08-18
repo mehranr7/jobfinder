@@ -68,10 +68,13 @@ function changeStatus(btn, link, newStatus) {
                 card.className = card.className.replace(/\bstatus-[a-z]+\b/g, '').trim();
                 card.classList.add('status-' + newStatus.toLowerCase());
 
-                let emoji = "👀";
-                if (newStatus === "Applied") emoji = "✅";
-                if (newStatus === "Skipped") emoji = "⏭️";
-                btn.innerText = emoji;
+                const emojiMap = {
+                    "Unseen": "🆕",
+                    "Later": "⏳",
+                    "Applied": "✅",
+                    "Skipped": "❌"
+                };
+                btn.innerText = emojiMap[newStatus] || originalText;
                 btn.disabled = false;
 
                 if (card._cache) card._cache.status = newStatus;

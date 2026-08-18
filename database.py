@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import shutil
 
 BASE_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -8,13 +9,15 @@ os.makedirs(DATA_DIR, exist_ok=True)
 ROOT_DB = os.path.join(BASE_DIR, "jobs.db")
 DATA_DB = os.path.join(DATA_DIR, "jobs.db")
 
-# Use data/jobs.db if it exists; otherwise use root jobs.db if it's a valid file; otherwise default to data/jobs.db
-if os.path.isfile(DATA_DB):
-    DB_PATH = DATA_DB
-elif os.path.isfile(ROOT_DB):
-    DB_PATH = ROOT_DB
-else:
-    DB_PATH = DATA_DB
+# Auto-migrate root jobs.db to data/jobs.db if data/jobs.db is missing or empty
+if os.path.isfile(ROOT_DB) and (not os.path.isfile(DATA_DB) or os.path.getsize(DATA_DB) == 0):
+    try:
+        shutil.copy2(ROOT_DB, DATA_DB)
+        print("✅ Automatically migrated existing jobs.db to data/jobs.db")
+    except Exception as e:
+        print(f"[!] Migration warning: {e}")
+
+DB_PATH = DATA_DB if os.path.isfile(DATA_DB) else (ROOT_DB if os.path.isfile(ROOT_DB) else DATA_DB)
 
 def get_connection():
     # Detect if we are in a multithreaded context (like Flask)

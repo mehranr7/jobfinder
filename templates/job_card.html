@@ -130,6 +130,8 @@
             <div class="status-btn-group">
                 <button class="status-btn btn-unseen {% if (job.status or 'Unseen') == 'Unseen' %}active{% endif %}"
                     onclick="changeStatus(this, '{{ job.link }}', 'Unseen')" title="Unseen">🆕</button>
+                <button class="status-btn btn-later {% if job.status == 'Later' %}active{% endif %}"
+                    onclick="changeStatus(this, '{{ job.link }}', 'Later')" title="Later / Postponed">⏳</button>
                 <button class="status-btn btn-applied {% if job.status == 'Applied' %}active{% endif %}"
                     onclick="changeStatus(this, '{{ job.link }}', 'Applied')" title="Applied">✅</button>
                 <button class="status-btn btn-skipped {% if job.status == 'Skipped' %}active{% endif %}"

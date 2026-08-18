@@ -204,7 +204,7 @@ def main_loop(log_queue=None):
         try:
             conn = database.get_connection()
             c = conn.cursor()
-            c.execute("SELECT * FROM jobs WHERE status = 'Unseen' AND (eval_score IS NULL OR eval_reason IS NULL) ORDER BY discovered_at DESC")
+            c.execute("SELECT * FROM jobs WHERE status IN ('Unseen', 'Later') AND (eval_score IS NULL OR eval_reason IS NULL) ORDER BY discovered_at DESC")
             jobs_to_evaluate = [dict(row) for row in c.fetchall()]
             conn.close()
             

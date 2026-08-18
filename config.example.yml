@@ -5,6 +5,7 @@ page_size: 20
 # ── Application Pipeline ─────────────────────────────────
 app_states:
   - "Not Applied"
+  - "Postponed"
   - "Applied"
   - "Rejected"
   - "Interview"
