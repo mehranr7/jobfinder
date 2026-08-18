@@ -158,8 +158,136 @@ def get_all_jobs():
     c.execute('SELECT * FROM jobs ORDER BY discovered_at DESC')
     rows = c.fetchall()
     conn.close()
-    # Convert sqlite3.Row objects to dicts
     return [dict(row) for row in rows]
+
+def get_jobs_filtered(search="", status="", platforms=None, keywords=None,
+                      neg_keywords=None, desc_tags=None, sort="date-desc",
+                      page=1, page_size=20, min_score=None, has_score=None):
+    """
+    Server-side filtering and pagination. All filtering happens in SQLite.
+    Returns (jobs: list[dict], total: int).
+    """
+    conn = get_connection()
+    c = conn.cursor()
+
+    conditions = []
+    params = []
+
+    if search:
+        conditions.append("(LOWER(title) LIKE ? OR LOWER(company) LIKE ? OR LOWER(keywords) LIKE ? OR LOWER(description_tags) LIKE ?)")
+        s = f"%{search.lower()}%"
+        params.extend([s, s, s, s])
+
+    if status:
+        conditions.append("status = ?")
+        params.append(status)
+
+    if platforms:
+        placeholders = ",".join("?" * len(platforms))
+        conditions.append(f"LOWER(platform) IN ({placeholders})")
+        params.extend([p.lower() for p in platforms])
+
+    if keywords:
+        kw_conds = []
+        for kw in keywords:
+            kw_conds.append("(LOWER(keywords) LIKE ? OR LOWER(description_tags) LIKE ?)")
+            s = f"%{kw.lower()}%"
+            params.extend([s, s])
+        conditions.append(f"({' OR '.join(kw_conds)})")
+
+    if neg_keywords:
+        nkw_conds = []
+        for nkw in neg_keywords:
+            nkw_conds.append("(LOWER(negative_keywords) LIKE ? OR LOWER(neg_description_tags) LIKE ?)")
+            s = f"%{nkw.lower()}%"
+            params.extend([s, s])
+        conditions.append(f"({' OR '.join(nkw_conds)})")
+
+    if desc_tags:
+        dt_conds = []
+        for dt in desc_tags:
+            dt_conds.append("LOWER(description_tags) LIKE ?")
+            params.append(f"%{dt.lower()}%")
+        conditions.append(f"({' OR '.join(dt_conds)})")
+
+    if min_score is not None:
+        conditions.append("eval_score >= ?")
+        params.append(min_score)
+
+    if has_score is True:
+        conditions.append("eval_score IS NOT NULL")
+    elif has_score is False:
+        conditions.append("eval_score IS NULL")
+
+    where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    sort_map = {
+        "date-desc":  "discovered_at DESC",
+        "date-asc":   "discovered_at ASC",
+        "title-asc":  "LOWER(title) ASC",
+        "title-desc": "LOWER(title) DESC",
+        "score-desc": "COALESCE(eval_score, -1) DESC",
+    }
+    order_by = sort_map.get(sort, "discovered_at DESC")
+
+    # Total count
+    count_sql = f"SELECT COUNT(*) FROM jobs {where_clause}"
+    c.execute(count_sql, params)
+    total = c.fetchone()[0]
+
+    # Paginated data
+    offset = (page - 1) * page_size
+    data_sql = f"SELECT * FROM jobs {where_clause} ORDER BY {order_by} LIMIT ? OFFSET ?"
+    c.execute(data_sql, params + [page_size, offset])
+    rows = c.fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows], total
+
+
+def get_filter_options():
+    """
+    Returns all distinct values needed to populate filter dropdowns.
+    Called once on page load.
+    """
+    conn = get_connection()
+    c = conn.cursor()
+
+    # Distinct platforms
+    c.execute("SELECT DISTINCT platform FROM jobs WHERE platform IS NOT NULL AND platform != '' ORDER BY platform")
+    platforms = [row[0] for row in c.fetchall()]
+
+    # All keywords (comma-separated field — collect and split)
+    c.execute("SELECT keywords, description_tags FROM jobs WHERE keywords IS NOT NULL OR description_tags IS NOT NULL")
+    kw_set = set()
+    for row in c.fetchall():
+        for field in [row[0] or "", row[1] or ""]:
+            for kw in field.split(","):
+                kw = kw.strip()
+                if kw:
+                    kw_set.add(kw)
+
+    # All negative keywords
+    c.execute("SELECT negative_keywords, neg_description_tags FROM jobs")
+    neg_kw_set = set()
+    for row in c.fetchall():
+        for field in [row[0] or "", row[1] or ""]:
+            for kw in field.split(","):
+                kw = kw.strip()
+                if kw:
+                    neg_kw_set.add(kw)
+
+    # Status counts
+    c.execute("SELECT status, COUNT(*) FROM jobs GROUP BY status")
+    status_counts = {row[0]: row[1] for row in c.fetchall()}
+
+    conn.close()
+    return {
+        "platforms": platforms,
+        "keywords": sorted(kw_set, key=str.lower),
+        "neg_keywords": sorted(neg_kw_set, key=str.lower),
+        "status_counts": status_counts,
+    }
 
 def update_job_status(link, status):
     conn = get_connection()

@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Scraper Results</title>
+    <title>JobFinder — Scraped Job Offers</title>
+    <meta name="description" content="Smart job offer aggregator with AI-powered evaluation and filtering.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -13,183 +14,166 @@
     <div class="container">
         <h1>Scraped Job Offers</h1>
 
-        <div style="margin-bottom: 20px; text-align: center;">
-            <button class="done-btn" id="runScraperBtn" onclick="runScraper()"
-                style="font-size: 1.1em; padding: 10px 20px;">🚀 Run Scraper</button>
-            <button class="done-btn" id="pauseScraperBtn" onclick="pauseScraper()"
-                style="font-size: 1.1em; padding: 10px 20px; display: none; background-color: #f39c12;">⏸ Pause</button>
-            <button class="done-btn" id="resumeScraperBtn" onclick="resumeScraper()"
-                style="font-size: 1.1em; padding: 10px 20px; display: none; background-color: #27ae60;">▶ Resume</button>
-            <button class="clear-btn" id="stopScraperBtn" onclick="stopScraper()"
-                style="font-size: 1.1em; padding: 10px 20px; display: none; background-color: #e74c3c; color: white;">⏹ Stop</button>
-            <button class="done-btn" id="updateTagsBtn" onclick="updateTags()"
-                style="font-size: 1.1em; padding: 10px 20px; background-color: #8e44ad; margin-left: 10px;">🏷️ Update Tags</button>
-        </div>
-        
-        <div id="updateProgressContainer" style="display: none; margin-bottom: 20px; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto;">
-            <div style="background-color: #ecf0f1; border-radius: 8px; height: 20px; width: 100%; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);">
-                <div id="updateProgressBar" style="background-color: #8e44ad; height: 100%; width: 0%; transition: width 0.2s ease;"></div>
-            </div>
-            <div id="updateProgressText" style="margin-top: 5px; font-size: 0.9em; color: #7f8c8d; font-family: monospace;">Updating 0 of 0 jobs...</div>
+        <!-- ── Scraper Controls ─────────────────────────────────────────── -->
+        <div class="scraper-controls">
+            <button class="done-btn" id="runScraperBtn" onclick="runScraper()">🚀 Run Scraper</button>
+            <button class="done-btn" id="pauseScraperBtn" onclick="pauseScraper()" style="display:none; background-color:#f39c12;">⏸ Pause</button>
+            <button class="done-btn" id="resumeScraperBtn" onclick="resumeScraper()" style="display:none; background-color:#27ae60;">▶ Resume</button>
+            <button class="clear-btn" id="stopScraperBtn" onclick="stopScraper()" style="display:none; background-color:#e74c3c; color:white;">⏹ Stop</button>
+            <button class="done-btn" id="updateTagsBtn" onclick="updateTags()" style="background-color:#8e44ad; margin-left:10px;">🏷️ Update Tags</button>
         </div>
 
-        <div id="terminalContainer"
-            style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div
-                style="background: #2c3e50; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #34495e;">
-                <span style="font-weight: bold; font-family: monospace; font-size: 1.1em;">Scraper Logs</span>
-                <button onclick="toggleTerminal('terminalOutputWrapper')"
-                    style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em; padding: 0 5px;">▼</button>
+        <div id="updateProgressContainer" style="display:none; margin-bottom:20px; text-align:center; max-width:600px; margin-left:auto; margin-right:auto;">
+            <div style="background-color:#ecf0f1; border-radius:8px; height:20px; width:100%; overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,0.2);">
+                <div id="updateProgressBar" style="background-color:#8e44ad; height:100%; width:0%; transition:width 0.2s ease;"></div>
             </div>
-            <div id="terminalOutputWrapper"
-                style="display: none; background: #1e1e1e; color: #00ff00; padding: 15px; max-height: 300px; overflow-y: auto; font-family: monospace; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
-                <pre id="terminalOutput" style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"></pre>
+            <div id="updateProgressText" style="margin-top:5px; font-size:0.9em; color:#7f8c8d; font-family:monospace;">Updating 0 of 0 jobs...</div>
+        </div>
+
+        <!-- Scraper Terminal -->
+        <div id="terminalContainer" style="margin-bottom:20px; border-radius:8px; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+            <div style="background:#2c3e50; color:white; padding:10px 15px; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #34495e;">
+                <span style="font-weight:bold; font-family:monospace; font-size:1.1em;">Scraper Logs</span>
+                <button onclick="toggleTerminal('terminalOutputWrapper')" style="background:none; border:none; color:white; cursor:pointer; font-size:1.2em; padding:0 5px;">▼</button>
+            </div>
+            <div id="terminalOutputWrapper" style="display:none; background:#1e1e1e; color:#00ff00; padding:15px; max-height:300px; overflow-y:auto; font-family:monospace; box-shadow:inset 0 0 10px rgba(0,0,0,0.5);">
+                <pre id="terminalOutput" style="margin:0; white-space:pre-wrap; word-wrap:break-word;"></pre>
             </div>
         </div>
 
         {% if evaluator_enabled %}
-        <div id="evalTerminalContainer"
-            style="margin-bottom: 20px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div
-                style="background: #6c5ce7; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4834d4;">
+        <div id="evalTerminalContainer" style="margin-bottom:20px; border-radius:8px; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+            <div style="background:#6c5ce7; color:white; padding:10px 15px; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #4834d4;">
                 <div>
-                    <span style="font-weight: bold; font-family: monospace; font-size: 1.1em; margin-right: 15px;">✨ Gemini Evaluator Logs</span>
-                    <button id="toggleEvalBtn" onclick="toggleEvaluator()" style="background-color: #27ae60; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-right: 5px;">Eval: ON</button>
+                    <span style="font-weight:bold; font-family:monospace; font-size:1.1em; margin-right:15px;">✨ Gemini Evaluator Logs</span>
+                    <button id="toggleEvalBtn" onclick="toggleEvaluator()" style="background-color:#27ae60; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.9em; margin-right:5px;">Eval: ON</button>
                 </div>
-                <button onclick="toggleTerminal('evalTerminalOutputWrapper')"
-                    style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em; padding: 0 5px;">▼</button>
+                <button onclick="toggleTerminal('evalTerminalOutputWrapper')" style="background:none; border:none; color:white; cursor:pointer; font-size:1.2em; padding:0 5px;">▼</button>
             </div>
-            <div id="evalTerminalOutputWrapper"
-                style="display: none; background: #1e1e1e; color: #a29bfe; padding: 15px; max-height: 200px; overflow-y: auto; font-family: monospace; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
-                <pre id="evalTerminalOutput" style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">Waiting for jobs to evaluate...</pre>
+            <div id="evalTerminalOutputWrapper" style="display:none; background:#1e1e1e; color:#a29bfe; padding:15px; max-height:200px; overflow-y:auto; font-family:monospace; box-shadow:inset 0 0 10px rgba(0,0,0,0.5);">
+                <pre id="evalTerminalOutput" style="margin:0; white-space:pre-wrap; word-wrap:break-word;">Waiting for jobs to evaluate...</pre>
             </div>
         </div>
         {% endif %}
 
-        <div class="controls">
-            <div class="control-group">
-                <input type="text" id="searchInput" placeholder="Search title or keyword..." onkeyup="debouncedFilterJobs()">
-                <button class="clear-icon-btn" onclick="clearSearch()" title="Clear Search">⟲</button>
+        <!-- ── NEW: Search & Filter Panel ──────────────────────────────── -->
+        <div class="filter-panel">
+            <!-- Search Bar -->
+            <div class="search-bar-row">
+                <div class="search-bar-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" class="search-bar-input"
+                        placeholder="Search by title, company, keyword…"
+                        autocomplete="off" spellcheck="false">
+                    <button class="search-clear-btn" id="searchClearBtn" onclick="clearSearch()" title="Clear">✕</button>
+                </div>
+                <div class="filter-right-controls">
+                    <select id="sortSelect" class="sort-select" onchange="onFilterChange()">
+                        <option value="date-desc">⬇ Newest First</option>
+                        <option value="date-asc">⬆ Oldest First</option>
+                        <option value="title-asc">A → Z</option>
+                        <option value="title-desc">Z → A</option>
+                        <option value="score-desc">✨ Best Match</option>
+                    </select>
+                    <button class="action-btn export-btn" onclick="exportFilteredJobsToCSV()">📥 Export</button>
+                </div>
             </div>
-            <div class="control-group">
-                <select id="statusFilter" onchange="filterJobs()">
-                    <option value="">All Statuses</option>
-                    <option value="Unseen">Unseen</option>
-                    <option value="Later">Later</option>
-                    <option value="Applied">Applied</option>
-                    <option value="Skipped">Skipped</option>
-                </select>
-                <button class="clear-icon-btn" onclick="clearStatus()" title="Clear Status">⟲</button>
+
+            <!-- Status Tabs -->
+            <div class="status-tabs">
+                <button class="status-tab" data-status="" onclick="setStatusTab(this)">
+                    All <span class="tab-count" id="tabCount-all"></span>
+                </button>
+                <button class="status-tab active" data-status="Unseen" onclick="setStatusTab(this)">
+                    🆕 Unseen <span class="tab-count" id="tabCount-Unseen"></span>
+                </button>
+                <button class="status-tab" data-status="Later" onclick="setStatusTab(this)">
+                    ⏳ Later <span class="tab-count" id="tabCount-Later"></span>
+                </button>
+                <button class="status-tab" data-status="Applied" onclick="setStatusTab(this)">
+                    ✅ Applied <span class="tab-count" id="tabCount-Applied"></span>
+                </button>
+                <button class="status-tab" data-status="Skipped" onclick="setStatusTab(this)">
+                    ❌ Skipped <span class="tab-count" id="tabCount-Skipped"></span>
+                </button>
             </div>
-            <div class="control-group">
-                <select id="sortSelect" onchange="sortJobs()">
-                    <option value="date-desc" selected>Date (Newest First)</option>
-                    <option value="date-asc">Date (Oldest First)</option>
-                    <option value="title-asc">Title (A-Z)</option>
-                    <option value="title-desc">Title (Z-A)</option>
-                    <option value="keyword-asc">Keyword (A-Z)</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <div class="multi-select" id="companySelectContainer">
-                    <div class="select-box" onclick="toggleDropdown('companyDropdown')">
-                        <span id="companySelectTitle" class="truncate-text">All Companies</span> 
-                        <span class="dropdown-caret">▼</span>
-                    </div>
-                    <div class="dropdown-content" id="companyDropdown">
-                        <!-- Checkboxes injected by JS -->
+
+            <!-- Advanced Filter Row -->
+            <div class="advanced-filters" id="advancedFilters">
+                <div class="filter-group" id="platformFilterGroup">
+                    <div class="filter-dropdown-wrap">
+                        <button class="filter-pill-btn" onclick="toggleFilterDropdown('platformDrop')">
+                            <span id="platformPillLabel">Platform</span> <span class="pill-caret">▾</span>
+                        </button>
+                        <div class="filter-dropdown" id="platformDrop" style="display:none;">
+                            <div class="filter-dropdown-search">
+                                <input type="text" placeholder="Search…" oninput="filterDropdownSearch(this, 'platformDrop')">
+                            </div>
+                            <div class="filter-dropdown-list" id="platformDropList"></div>
+                        </div>
                     </div>
                 </div>
-                <button class="clear-icon-btn" onclick="clearCompany()" title="Clear Companies">⟲</button>
-            </div>
-            <div class="control-group">
-                <div class="multi-select" id="platformSelectContainer">
-                    <div class="select-box" onclick="toggleDropdown('platformDropdown')">
-                        <span id="platformSelectTitle" class="truncate-text">All Platforms</span> 
-                        <span class="dropdown-caret">▼</span>
-                    </div>
-                    <div class="dropdown-content" id="platformDropdown">
-                        <!-- Checkboxes injected by JS -->
-                    </div>
-                </div>
-                <button class="clear-icon-btn" onclick="clearPlatform()" title="Clear Platforms">⟲</button>
-            </div>
-            <div class="control-group">
-                <div class="multi-select" id="keywordSelectContainer">
-                    <div class="select-box" onclick="toggleDropdown('keywordDropdown')">
-                        <span id="keywordSelectTitle" class="truncate-text">All Keywords</span> 
-                        <span class="dropdown-caret">▼</span>
-                    </div>
-                    <div class="dropdown-content" id="keywordDropdown">
-                        <!-- Checkboxes injected by JS -->
+                <div class="filter-group">
+                    <div class="filter-dropdown-wrap">
+                        <button class="filter-pill-btn" onclick="toggleFilterDropdown('keywordDrop')">
+                            <span id="keywordPillLabel">Keyword</span> <span class="pill-caret">▾</span>
+                        </button>
+                        <div class="filter-dropdown" id="keywordDrop" style="display:none;">
+                            <div class="filter-dropdown-search">
+                                <input type="text" placeholder="Search…" oninput="filterDropdownSearch(this, 'keywordDrop')">
+                            </div>
+                            <div class="filter-dropdown-list" id="keywordDropList"></div>
+                        </div>
                     </div>
                 </div>
-                <button class="clear-icon-btn" onclick="clearKeyword()" title="Clear Keywords">⟲</button>
-            </div>
-            <div class="control-group">
-                <div class="multi-select" id="descTagSelectContainer">
-                    <div class="select-box" onclick="toggleDropdown('descTagDropdown')">
-                        <span id="descTagSelectTitle" class="truncate-text">All Desc Tags</span> 
-                        <span class="dropdown-caret">▼</span>
-                    </div>
-                    <div class="dropdown-content" id="descTagDropdown">
-                        <!-- Checkboxes injected by JS -->
-                    </div>
-                </div>
-                <button class="clear-icon-btn" onclick="clearDescTag()" title="Clear Description Tags">⟲</button>
-            </div>
-            <div class="control-group">
-                <div class="multi-select" id="negKeywordSelectContainer">
-                    <div class="select-box" onclick="toggleDropdown('negKeywordDropdown')">
-                        <span id="negKeywordSelectTitle" class="truncate-text">All Neg Keywords</span> 
-                        <span class="dropdown-caret">▼</span>
-                    </div>
-                    <div class="dropdown-content" id="negKeywordDropdown">
-                        <!-- Checkboxes injected by JS -->
+                <div class="filter-group">
+                    <div class="filter-dropdown-wrap">
+                        <button class="filter-pill-btn" onclick="toggleFilterDropdown('negKwDrop')">
+                            <span id="negKwPillLabel">⚠ Neg. Keyword</span> <span class="pill-caret">▾</span>
+                        </button>
+                        <div class="filter-dropdown" id="negKwDrop" style="display:none;">
+                            <div class="filter-dropdown-search">
+                                <input type="text" placeholder="Search…" oninput="filterDropdownSearch(this, 'negKwDrop')">
+                            </div>
+                            <div class="filter-dropdown-list" id="negKwDropList"></div>
+                        </div>
                     </div>
                 </div>
-                <button class="clear-icon-btn" onclick="clearNegativeKeyword()" title="Clear Negative Keywords">⟲</button>
+                <button class="reset-filters-btn" id="resetFiltersBtn" onclick="resetAllFilters()" style="display:none;">✕ Reset Filters</button>
             </div>
-            <div class="control-group">
-                <div class="multi-select" id="negDescTagSelectContainer">
-                    <div class="select-box" onclick="toggleDropdown('negDescTagDropdown')">
-                        <span id="negDescTagSelectTitle" class="truncate-text">All Neg Desc Tags</span> 
-                        <span class="dropdown-caret">▼</span>
-                    </div>
-                    <div class="dropdown-content" id="negDescTagDropdown">
-                        <!-- Checkboxes injected by JS -->
-                    </div>
-                </div>
-                <button class="clear-icon-btn" onclick="clearNegDescTag()" title="Clear Negative Desc Tags">⟲</button>
+
+            <!-- Active filter chips -->
+            <div class="active-chips" id="activeChips"></div>
+
+            <!-- Result count -->
+            <div class="result-meta">
+                <span id="jobCountDisplay">Loading…</span>
             </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 id="jobCountDisplay" style="margin: 0;">Total Offers: 0</h3>
-            <button class="action-btn" onclick="exportFilteredJobsToCSV()" style="background-color: #27ae60; border-color: #27ae60;">📥 Export CSV</button>
+        <!-- ── Job Cards Container ──────────────────────────────────────── -->
+        <div class="jobs-container" id="jobsContainer">
+            <!-- Skeleton loaders shown while first fetch is in flight -->
+            <div class="skeleton-card" id="sk1"></div>
+            <div class="skeleton-card" id="sk2"></div>
+            <div class="skeleton-card" id="sk3"></div>
         </div>
 
-        <div class="jobs-container">
-            {% for job in jobs %}
-            {% set loop_index = loop.index %}
-            {% include 'job_card.html' %}
-            {% endfor %}
-        </div>
-        
-        <div style="text-align: center; margin-top: 20px;">
-            <button id="loadMoreBtn" class="action-btn" onclick="loadMoreJobs()" style="display: none; padding: 10px 20px; font-size: 16px;">Load More</button>
+        <!-- Infinite scroll sentinel -->
+        <div id="scrollSentinel" style="height:1px; margin-top:20px;"></div>
+
+        <!-- "Loading more" indicator -->
+        <div id="loadingMore" style="display:none; text-align:center; padding:20px 0; color:var(--text-muted); font-size:0.95em;">
+            Loading more jobs…
         </div>
 
-    </div>
-    <script>
-        window.PAGE_SIZE = {{ page_size|default(20) }};
-    </script>
+    </div><!-- /container -->
 
-    <!-- Note Modal -->
-    <div id="noteModal" class="modal-overlay" style="display: none;">
+    <!-- ── Modals ───────────────────────────────────────────────────────── -->
+    <div id="noteModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
-            <h2 style="margin-top: 0;">Job Note</h2>
-            <textarea id="noteTextarea" placeholder="Write your note here..."></textarea>
+            <h2 style="margin-top:0;">Job Note</h2>
+            <textarea id="noteTextarea" placeholder="Write your note here…"></textarea>
             <div class="modal-actions">
                 <button class="action-btn cancel-btn" onclick="closeNoteModal()">Cancel</button>
                 <button class="action-btn" onclick="saveNote()">Save</button>
@@ -198,23 +182,21 @@
         </div>
     </div>
 
-    <!-- Eval Reason Modal -->
-    <div id="evalModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content" style="max-width: 500px;">
-            <h2 style="margin-top: 0;">✨ AI Evaluation</h2>
-            <p id="evalReasonText" style="line-height: 1.5; color: var(--text-main); font-size: 1.1em;"></p>
-            <div class="modal-actions" style="justify-content: center;">
+    <div id="evalModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:500px;">
+            <h2 style="margin-top:0;">✨ AI Evaluation</h2>
+            <p id="evalReasonText" style="line-height:1.5; color:var(--text-main); font-size:1.1em;"></p>
+            <div class="modal-actions" style="justify-content:center;">
                 <button class="action-btn cancel-btn" onclick="document.getElementById('evalModal').style.display='none'">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- Cover Letter Modal -->
-    <div id="coverLetterModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content" style="max-width: 800px; width: 90%;">
-            <h2 style="margin-top: 0;">📝 Generiertes Anschreiben</h2>
-            <textarea id="coverLetterTextarea" readonly style="width: 100%; height: 400px; font-family: monospace; font-size: 14px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
-            <div class="modal-actions" style="justify-content: space-between; margin-top: 15px;">
+    <div id="coverLetterModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:800px; width:90%;">
+            <h2 style="margin-top:0;">📝 Generiertes Anschreiben</h2>
+            <textarea id="coverLetterTextarea" readonly style="width:100%; height:400px; font-family:monospace; font-size:14px; padding:10px; border:1px solid #ccc; border-radius:4px; resize:vertical;"></textarea>
+            <div class="modal-actions" style="justify-content:space-between; margin-top:15px;">
                 <button class="action-btn cancel-btn" onclick="document.getElementById('coverLetterModal').style.display='none'">Close</button>
                 <button class="action-btn" onclick="copyCoverLetter()">Copy to Clipboard 📋</button>
             </div>
@@ -222,9 +204,13 @@
     </div>
 
     <script>
+        window.PAGE_SIZE = {{ page_size|default(20) }};
+        window.SPECIAL_THRESHOLD = {{ special_threshold|default(3) }};
         const EVALUATOR_ENABLED = {{ 'true' if evaluator_enabled else 'false' }};
+        const APP_STATES = {{ app_states | tojson }};
+        const CV_TYPES = {{ cv_types | tojson }};
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
 
+</body>
 </html>

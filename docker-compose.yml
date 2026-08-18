@@ -16,6 +16,11 @@ services:
       # Mount static and templates for live frontend reloading
       - ./static:/app/static
       - ./templates:/app/templates
+      # Mount Python source files for live backend reloading (no rebuild needed)
+      - ./app.py:/app/app.py
+      - ./database.py:/app/database.py
+      - ./scraper.py:/app/scraper.py
+      - ./utils.py:/app/utils.py
       # Optional local-only source adapters (git-ignored, never baked into image)
       - ./private_sources:/app/private_sources:ro
     restart: unless-stopped

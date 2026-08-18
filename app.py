@@ -41,19 +41,71 @@ def get_evaluator_enabled():
 
 @app.route('/')
 def index():
-    jobs = database.get_all_jobs()
     threshold = get_special_threshold()
     app_states, cv_types, page_size = get_config_options()
     evaluator_enabled = get_evaluator_enabled()
-    return render_template('index.html', jobs=jobs, special_threshold=threshold, page_size=page_size,
+    return render_template('index.html', special_threshold=threshold, page_size=page_size,
                            app_states=app_states, cv_types=cv_types, evaluator_enabled=evaluator_enabled)
+
+@app.route('/api/jobs')
+def api_jobs():
+    """Server-side filtered, sorted, paginated job listing. No page reload needed."""
+    search = request.args.get('search', '').strip()
+    status = request.args.get('status', '').strip()
+    sort = request.args.get('sort', 'date-desc').strip()
+    page = max(1, int(request.args.get('page', 1)))
+    page_size = max(1, min(100, int(request.args.get('page_size', 20))))
+
+    platforms = request.args.getlist('platform')
+    keywords = request.args.getlist('keyword')
+    neg_keywords = request.args.getlist('neg_keyword')
+    desc_tags = request.args.getlist('desc_tag')
+
+    min_score_raw = request.args.get('min_score', '')
+    min_score = int(min_score_raw) if min_score_raw.isdigit() else None
+
+    jobs, total = database.get_jobs_filtered(
+        search=search,
+        status=status,
+        platforms=platforms or None,
+        keywords=keywords or None,
+        neg_keywords=neg_keywords or None,
+        desc_tags=desc_tags or None,
+        sort=sort,
+        page=page,
+        page_size=page_size,
+        min_score=min_score,
+    )
+
+    # Sanitize None values for JSON serialization
+    for job in jobs:
+        for k, v in job.items():
+            if v is None:
+                job[k] = ''
+
+    return jsonify({
+        'jobs': jobs,
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'has_more': (page * page_size) < total,
+    })
+
+@app.route('/api/filter_options')
+def api_filter_options():
+    """Returns all distinct filter values for dropdowns. Called once on page load."""
+    opts = database.get_filter_options()
+    return jsonify(opts)
 
 @app.route('/api/get_job_cards')
 def get_job_cards():
-    jobs = database.get_all_jobs()
+    """Returns the single newest job card as HTML for scraper UI_RELOAD prepend."""
+    jobs, _ = database.get_jobs_filtered(sort='date-desc', page=1, page_size=1)
     threshold = get_special_threshold()
     app_states, cv_types, _ = get_config_options()
     evaluator_enabled = get_evaluator_enabled()
+    if not jobs:
+        return ''
     return render_template('job_cards.html', jobs=jobs, special_threshold=threshold,
                            app_states=app_states, cv_types=cv_types, evaluator_enabled=evaluator_enabled)
 

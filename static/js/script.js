@@ -1,3 +1,5 @@
+// ── Utility helpers ─────────────────────────────────────────────────────────
+
 function toggleDescription(elementId, btn) {
     const desc = document.getElementById(elementId);
     if (desc.style.display === 'none' || desc.style.display === '') {
@@ -11,172 +13,125 @@ function toggleDescription(elementId, btn) {
 
 function copyToClipboard(elementId, btn) {
     const el = document.getElementById(elementId);
-    
-    // innerText strips newlines if the element is hidden (display: none).
-    // So we temporarily make it visible, grab the text, and hide it again.
     const originalDisplay = el.style.display;
-    if (originalDisplay === 'none' || originalDisplay === '') {
-        el.style.display = 'block';
-    }
-    
+    if (originalDisplay === 'none' || originalDisplay === '') el.style.display = 'block';
     const text = el.innerText;
-    
-    if (originalDisplay === 'none' || originalDisplay === '') {
-        el.style.display = 'none';
-    }
-
+    if (originalDisplay === 'none' || originalDisplay === '') el.style.display = 'none';
     navigator.clipboard.writeText(text).then(() => {
         const originalText = btn.innerText;
         btn.innerText = "✅";
         setTimeout(() => btn.innerText = originalText, 2000);
-    }).catch(err => {
-        console.error('Failed to copy: ', err);
-    });
+    }).catch(err => console.error('Failed to copy: ', err));
 }
+
+function timeago(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    const diff = Math.floor((Date.now() - d) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+    return d.toLocaleDateString('de-DE');
+}
+
+function esc(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Status change ────────────────────────────────────────────────────────────
 
 function changeStatus(btn, link, newStatus) {
     const card = btn.closest('.job-card');
-
     if (btn.disabled) return;
-
     const originalText = btn.innerText;
-    btn.innerText = "⏳";
+    btn.innerText = "…";
     btn.disabled = true;
 
     fetch('/api/change_status', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            link: link,
-            status: newStatus
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link, status: newStatus })
     })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update UI
-                const group = btn.closest('.status-btn-group');
-                if (group) {
-                    group.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
-                }
-                btn.classList.add('active');
-
-                card.setAttribute('data-status', newStatus);
-                // remove old status classes
-                card.className = card.className.replace(/\bstatus-[a-z]+\b/g, '').trim();
-                card.classList.add('status-' + newStatus.toLowerCase());
-
-                const emojiMap = {
-                    "Unseen": "🆕",
-                    "Later": "⏳",
-                    "Applied": "✅",
-                    "Skipped": "❌"
-                };
-                btn.innerText = emojiMap[newStatus] || originalText;
-                btn.disabled = false;
-
-                if (card._cache) card._cache.status = newStatus;
-                filterJobs(); // update counts and visibility if filtered
-            } else {
-                alert("Failed to update status.");
-                btn.innerText = originalText;
-                btn.disabled = false;
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const group = btn.closest('.status-btn-group');
+            if (group) group.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            card.setAttribute('data-status', newStatus);
+            card.className = card.className.replace(/\bstatus-[a-z]+\b/g, '').trim();
+            card.classList.add('status-' + newStatus.toLowerCase());
+            const emojiMap = { Unseen: '🆕', Later: '⏳', Applied: '✅', Skipped: '❌' };
+            btn.innerText = emojiMap[newStatus] || originalText;
+            btn.disabled = false;
+            // Update tab counts
+            refreshStatusCounts();
+            // If status filter is active and card no longer matches, remove it from DOM
+            if (state.status && state.status !== newStatus) {
+                card.remove();
+                state.totalCount = Math.max(0, state.totalCount - 1);
+                updateCountDisplay();
             }
-        })
-        .catch(error => {
-            console.error("Error changing status:", error);
-            alert("Failed to update status due to network error.");
+        } else {
+            alert("Failed to update status.");
             btn.innerText = originalText;
             btn.disabled = false;
-        });
+        }
+    })
+    .catch(() => {
+        alert("Failed to update status due to network error.");
+        btn.innerText = originalText;
+        btn.disabled = false;
+    });
 }
 
 function changeCvType(selectElement, link) {
     const cvType = selectElement.value;
     const originalBorder = selectElement.style.borderColor;
-
     selectElement.disabled = true;
-
     fetch('/api/change_cv', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            link: link,
-            cv_type: cvType
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link, cv_type: cvType })
     })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                selectElement.style.borderColor = 'var(--success)';
-                setTimeout(() => {
-                    selectElement.style.borderColor = originalBorder;
-                }, 2000);
-                selectElement.disabled = false;
-            } else {
-                alert("Failed to update CV.");
-                selectElement.disabled = false;
-            }
-        })
-        .catch(error => {
-            console.error("Error changing CV:", error);
-            alert("Failed to update CV due to network error.");
-            selectElement.disabled = false;
-        });
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            selectElement.style.borderColor = 'var(--success)';
+            setTimeout(() => { selectElement.style.borderColor = originalBorder; }, 2000);
+        } else { alert("Failed to update CV."); }
+        selectElement.disabled = false;
+    })
+    .catch(() => { alert("Failed to update CV due to network error."); selectElement.disabled = false; });
 }
 
 function changeAppState(selectElement, link) {
     const appState = selectElement.value;
     const originalBorder = selectElement.style.borderColor;
-    
     selectElement.disabled = true;
-    
     fetch('/api/change_app_state', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            link: link,
-            app_state: appState
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link, app_state: appState })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
-        if(data.success) {
+        if (data.success) {
             selectElement.style.borderColor = 'var(--success)';
-            setTimeout(() => {
-                selectElement.style.borderColor = originalBorder;
-            }, 2000);
-            selectElement.disabled = false;
-            
-            const card = selectElement.closest('.job-card');
-            if (card && card._cache) {
-                card._cache.status = appState;
-                card.setAttribute('data-status', appState);
-                filterJobs();
-            }
-        } else {
-            alert("Failed to update State.");
-            selectElement.disabled = false;
-        }
-    })
-    .catch(error => {
-        console.error("Error changing state:", error);
-        alert("Failed to update state due to network error.");
+            setTimeout(() => { selectElement.style.borderColor = originalBorder; }, 2000);
+        } else { alert("Failed to update State."); }
         selectElement.disabled = false;
-    });
+    })
+    .catch(() => { alert("Failed to update state due to network error."); selectElement.disabled = false; });
 }
 
+// ── Notes modal ──────────────────────────────────────────────────────────────
+
 function openNoteModal(link) {
-    // Find the button to get the note data
-    const noteBtn = document.querySelector(`button[onclick="openNoteModal('${link}')"]`);
+    const noteBtn = document.querySelector(`button[data-note-link="${link}"]`);
     const noteText = noteBtn ? noteBtn.getAttribute('data-note') : '';
-    
     document.getElementById('noteJobLink').value = link;
     document.getElementById('noteTextarea').value = noteText;
     document.getElementById('noteModal').style.display = 'flex';
@@ -195,302 +150,90 @@ function openEvalModal(reason) {
 
 function copyCoverLetterDirectly(btn) {
     if (btn.disabled) return;
-    
-    // Replace escaped newlines with actual newlines
     let letter = btn.getAttribute('data-letter') || "";
     letter = letter.replace(/\\n/g, '\n');
-    
     navigator.clipboard.writeText(letter).then(() => {
         const originalText = btn.innerHTML;
         btn.innerHTML = "✅ Copied!";
         btn.disabled = true;
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }, 2000);
-    }).catch(err => {
-        console.error('Failed to copy: ', err);
-        alert("Failed to copy Cover Letter to clipboard.");
-    });
+        setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+    }).catch(() => alert("Failed to copy Cover Letter to clipboard."));
+}
+
+function copyCoverLetter() {
+    const ta = document.getElementById('coverLetterTextarea');
+    navigator.clipboard.writeText(ta.value);
 }
 
 function saveNote() {
     const link = document.getElementById('noteJobLink').value;
     const note = document.getElementById('noteTextarea').value;
-    
     fetch('/api/save_note', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            link: link,
-            note: note
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link, note })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
-        if(data.success) {
-            // Update the data-note attribute on the button so it persists without refresh
-            const noteBtn = document.querySelector(`button[onclick="openNoteModal('${link}')"]`);
+        if (data.success) {
+            const noteBtn = document.querySelector(`button[data-note-link="${link}"]`);
             if (noteBtn) {
                 noteBtn.setAttribute('data-note', note);
                 noteBtn.style.color = 'var(--success)';
                 setTimeout(() => noteBtn.style.color = '', 2000);
             }
             closeNoteModal();
-        } else {
-            alert("Failed to save note.");
-        }
+        } else { alert("Failed to save note."); }
     })
-    .catch(error => {
-        console.error("Error saving note:", error);
-        alert("Failed to save note due to network error.");
-    });
+    .catch(() => alert("Failed to save note due to network error."));
 }
 
 function deleteJob(btn, link) {
-    if (!confirm("Are you sure you want to permanently delete this job offer? (Note: If it's still live on the website, it might be scraped again next time.)")) return;
-
+    if (!confirm("Are you sure you want to permanently delete this job offer?")) return;
     const card = btn.closest('.job-card');
     btn.disabled = true;
     btn.innerText = "⏳";
-
     fetch('/api/delete_job', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            link: link
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link })
     })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            card.style.transition = 'opacity 0.3s, transform 0.3s';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
+            setTimeout(() => {
                 card.remove();
-                // Update global array so filters keep working correctly
-                window.jobCards = window.jobCards.filter(c => c !== card);
-                filterJobs(); // Update counts
-            } else {
-                alert("Failed to delete job.");
-                btn.innerText = "🗑️";
-                btn.disabled = false;
-            }
-        })
-        .catch(error => {
-            console.error("Error deleting job:", error);
-            alert("Failed to delete job due to network error.");
+                state.totalCount = Math.max(0, state.totalCount - 1);
+                updateCountDisplay();
+            }, 300);
+        } else {
+            alert("Failed to delete job.");
             btn.innerText = "🗑️";
             btn.disabled = false;
-        });
-}
-
-let filterTimeout;
-function debouncedFilterJobs() {
-    clearTimeout(filterTimeout);
-    filterTimeout = setTimeout(filterJobs, 150);
-}
-
-function filterJobs() {
-    const searchInput = document.getElementById('searchInput');
-    const textFilter = searchInput ? searchInput.value.toLowerCase() : "";
-
-    const selectedKws = Array.from(document.querySelectorAll('.kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
-    const selectedNegKws = Array.from(document.querySelectorAll('.neg-kw-checkbox:checked')).map(cb => cb.value.toLowerCase());
-    const selectedCompanies = Array.from(document.querySelectorAll('.company-checkbox:checked')).map(cb => cb.value.toLowerCase());
-    const selectedPlatforms = Array.from(document.querySelectorAll('.platform-checkbox:checked')).map(cb => cb.value.toLowerCase());
-    const selectedDescTags = Array.from(document.querySelectorAll('.desc-tag-checkbox:checked')).map(cb => cb.value.toLowerCase());
-    const selectedNegDescTags = Array.from(document.querySelectorAll('.neg-desc-tag-checkbox:checked')).map(cb => cb.value.toLowerCase());
-
-    const kwTitle = document.getElementById('keywordSelectTitle');
-    if (kwTitle) kwTitle.innerText = selectedKws.length > 0 ? `${selectedKws.length} Selected` : 'All Keywords';
-
-    const companyTitle = document.getElementById('companySelectTitle');
-    if (companyTitle) companyTitle.innerText = selectedCompanies.length > 0 ? `${selectedCompanies.length} Selected` : 'All Companies';
-
-    const platformTitle = document.getElementById('platformSelectTitle');
-    if (platformTitle) platformTitle.innerText = selectedPlatforms.length > 0 ? `${selectedPlatforms.length} Selected` : 'All Platforms';
-
-    const negKwTitle = document.getElementById('negKeywordSelectTitle');
-    if (negKwTitle) negKwTitle.innerText = selectedNegKws.length > 0 ? `${selectedNegKws.length} Selected` : 'All Negative Keywords';
-
-    const descTagTitle = document.getElementById('descTagSelectTitle');
-    if (descTagTitle) descTagTitle.innerText = selectedDescTags.length > 0 ? `${selectedDescTags.length} Selected` : 'All Description Tags';
-
-    const negDescTagTitle = document.getElementById('negDescTagSelectTitle');
-    if (negDescTagTitle) negDescTagTitle.innerText = selectedNegDescTags.length > 0 ? `${selectedNegDescTags.length} Selected` : 'All Neg Desc Tags';
-
-    const statusSelect = document.getElementById('statusFilter');
-    const statusFilter = statusSelect ? statusSelect.value : "";
-
-    window.filteredCards = window.jobCards.filter(card => {
-        const c = card._cache;
-
-        let matchesText = c.title.includes(textFilter) || c.kws.includes(textFilter) || c.company.includes(textFilter) || c.platform.includes(textFilter);
-        let matchesKeyword = selectedKws.length === 0 || selectedKws.some(kw => c.posKwsList.includes(kw));
-        let matchesCompany = selectedCompanies.length === 0 || selectedCompanies.includes(c.company);
-        let matchesPlatform = selectedPlatforms.length === 0 || selectedPlatforms.includes(c.platform);
-        let matchesNegKeyword = selectedNegKws.length === 0 || selectedNegKws.some(kw => c.negKwsList.includes(kw));
-        let matchesDescTag = selectedDescTags.length === 0 || selectedDescTags.some(tag => c.descTagsList.includes(tag));
-        let matchesNegDescTag = selectedNegDescTags.length === 0 || selectedNegDescTags.some(tag => c.negDescTagsList.includes(tag));
-
-        let matchesStatus = true;
-        if (statusFilter && statusFilter !== "") {
-            matchesStatus = (c.status === statusFilter);
         }
-
-        return matchesText && matchesKeyword && matchesCompany && matchesPlatform && matchesNegKeyword && matchesDescTag && matchesNegDescTag && matchesStatus;
-    });
-
-    applySortAndRender(true);
+    })
+    .catch(() => { alert("Failed to delete job due to network error."); btn.innerText = "🗑️"; btn.disabled = false; });
 }
 
-function applySortAndRender(resetPagination) {
-    const sortSelect = document.getElementById('sortSelect');
-    const sortValue = sortSelect ? sortSelect.value : "date-desc";
-
-    if (sortValue === "date-asc") {
-        window.filteredCards.sort((a, b) => {
-            const da = a._cache.dateNum;
-            const db = b._cache.dateNum;
-            if (isNaN(da) && isNaN(db)) return 0;
-            if (isNaN(da)) return 1;
-            if (isNaN(db)) return -1;
-            return da - db;
-        });
-    } else if (sortValue === "date-desc") {
-        window.filteredCards.sort((a, b) => {
-            const da = a._cache.dateNum;
-            const db = b._cache.dateNum;
-            if (isNaN(da) && isNaN(db)) return 0;
-            if (isNaN(da)) return 1;
-            if (isNaN(db)) return -1;
-            return db - da;
-        });
-    } else if (sortValue === "title-asc") {
-        window.filteredCards.sort((a, b) => a._cache.title.localeCompare(b._cache.title));
-    } else if (sortValue === "title-desc") {
-        window.filteredCards.sort((a, b) => b._cache.title.localeCompare(a._cache.title));
-    } else if (sortValue === "keyword-asc") {
-        window.filteredCards.sort((a, b) => a._cache.kws.localeCompare(b._cache.kws));
-    }
-
-    if (resetPagination) {
-        window.currentVisibleCount = window.PAGE_SIZE || 20;
-    }
-    renderCards();
-}
-
-function renderCards() {
-    const container = document.querySelector('.jobs-container');
-    const loadMoreBtn = document.getElementById('loadMoreBtn');
-    const countDisplay = document.getElementById('jobCountDisplay');
-
-    // Hide all initially
-    window.jobCards.forEach(card => card.style.display = 'none');
-
-    // Show only the visible slice
-    const visibleCards = window.filteredCards.slice(0, window.currentVisibleCount);
-
-    visibleCards.forEach(card => {
-        container.appendChild(card); // guarantees DOM order matches sort
-        card.style.display = 'block';
-    });
-
-    // Update Load More button
-    if (window.filteredCards.length > window.currentVisibleCount) {
-        if (loadMoreBtn) loadMoreBtn.style.display = 'inline-block';
-    } else {
-        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
-    }
-
-    // Update counter
-    const showing = Math.min(window.currentVisibleCount, window.filteredCards.length);
-    if (countDisplay) {
-        countDisplay.innerText = `Showing ${showing} of ${window.filteredCards.length} Offers`;
-    }
-}
-
-function loadMoreJobs() {
-    window.currentVisibleCount += (window.PAGE_SIZE || 20);
-    renderCards();
-}
-
-function sortJobs() {
-    applySortAndRender(true);
-}
-
-function clearSearch() {
-    document.getElementById('searchInput').value = '';
-    filterJobs();
-}
-
-function clearCompany() {
-    document.querySelectorAll('.company-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function clearPlatform() {
-    document.querySelectorAll('.platform-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function clearKeyword() {
-    document.querySelectorAll('.kw-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function clearNegativeKeyword() {
-    document.querySelectorAll('.neg-kw-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function clearDescTag() {
-    document.querySelectorAll('.desc-tag-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function clearNegDescTag() {
-    document.querySelectorAll('.neg-desc-tag-checkbox').forEach(cb => cb.checked = false);
-    filterJobs();
-}
-
-function clearStatus() {
-    document.getElementById('statusFilter').value = '';
-    filterJobs();
-}
-
-function toggleDropdown(id) {
-    const el = document.getElementById(id);
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-// Close dropdowns when clicking outside
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.multi-select')) {
-        document.querySelectorAll('.dropdown-content').forEach(d => d.style.display = 'none');
-    }
-});
+// ── Scraper controls ─────────────────────────────────────────────────────────
 
 function runScraper() {
     const btn = document.getElementById('runScraperBtn');
     const pauseBtn = document.getElementById('pauseScraperBtn');
     const resumeBtn = document.getElementById('resumeScraperBtn');
     const stopBtn = document.getElementById('stopScraperBtn');
-
-    const term = document.getElementById('terminalContainer');
     const termOut = document.getElementById('terminalOutput');
     const termWrapper = document.getElementById('terminalOutputWrapper');
 
     btn.disabled = true;
-    btn.innerText = "Running...";
-    btn.style.display = 'none'; // hide run button
+    btn.style.display = 'none';
     pauseBtn.style.display = 'inline-block';
     resumeBtn.style.display = 'none';
     stopBtn.style.display = 'inline-block';
-
-    term.style.display = 'block';
+    termWrapper.style.display = 'block';
     termOut.innerHTML = 'Starting scraper...\n';
 
     const source = new EventSource('/api/run_scraper');
@@ -510,20 +253,17 @@ function runScraper() {
             resetButtons();
             termOut.innerHTML += '\nScraper finished.\n';
         } else {
-            // Don't print internal signals to the UI terminal
             if (!event.data.includes("-> UI_RELOAD")) {
                 termOut.innerHTML += event.data + '\n';
                 termWrapper.scrollTop = termWrapper.scrollHeight;
             }
-
-            // If a new job was safely saved to DB, fetch the updated job list and total count
             if (event.data.includes("-> UI_RELOAD")) {
-                fetchLatestJobs();
+                prependLatestJob();
             }
         }
     };
 
-    source.onerror = function (event) {
+    source.onerror = function () {
         source.close();
         resetButtons();
         termOut.innerHTML += '\nError connecting to scraper stream.\n';
@@ -531,147 +271,89 @@ function runScraper() {
 }
 
 function pauseScraper() {
-    fetch('/api/pause_scraper', { method: 'POST' })
-        .then(() => {
-            document.getElementById('pauseScraperBtn').style.display = 'none';
-            document.getElementById('resumeScraperBtn').style.display = 'inline-block';
-        });
+    fetch('/api/pause_scraper', { method: 'POST' }).then(() => {
+        document.getElementById('pauseScraperBtn').style.display = 'none';
+        document.getElementById('resumeScraperBtn').style.display = 'inline-block';
+    });
 }
 
 function resumeScraper() {
-    fetch('/api/resume_scraper', { method: 'POST' })
-        .then(() => {
-            document.getElementById('resumeScraperBtn').style.display = 'none';
-            document.getElementById('pauseScraperBtn').style.display = 'inline-block';
-        });
+    fetch('/api/resume_scraper', { method: 'POST' }).then(() => {
+        document.getElementById('resumeScraperBtn').style.display = 'none';
+        document.getElementById('pauseScraperBtn').style.display = 'inline-block';
+    });
 }
 
 function stopScraper() {
-    fetch('/api/stop_scraper', { method: 'POST' })
-        .then(() => {
-            document.getElementById('pauseScraperBtn').style.display = 'none';
-            document.getElementById('resumeScraperBtn').style.display = 'none';
-            // Stop button can stay visible until the stream formally closes
-        });
+    fetch('/api/stop_scraper', { method: 'POST' }).then(() => {
+        document.getElementById('pauseScraperBtn').style.display = 'none';
+        document.getElementById('resumeScraperBtn').style.display = 'none';
+    });
 }
 
 function updateTags() {
     const btn = document.getElementById('updateTagsBtn');
     if (!btn || btn.disabled) return;
-    
     const originalText = btn.innerText;
     btn.innerText = "⏳ Updating...";
     btn.disabled = true;
-    
     const progressContainer = document.getElementById('updateProgressContainer');
     const progressBar = document.getElementById('updateProgressBar');
     const progressText = document.getElementById('updateProgressText');
-    
     progressContainer.style.display = 'block';
     progressBar.style.width = '0%';
     progressText.innerText = 'Starting...';
 
     const source = new EventSource('/api/update_tags');
-
     source.onmessage = function (event) {
         try {
             const data = JSON.parse(event.data);
-            
-            if (data.error) {
-                alert("Failed to update tags: " + data.error);
-                source.close();
-                resetUI();
-                return;
-            }
-            
+            if (data.error) { alert("Failed to update tags: " + data.error); source.close(); resetUI(); return; }
             const pct = data.total > 0 ? (data.progress / data.total) * 100 : 100;
             progressBar.style.width = pct + '%';
             progressText.innerText = `Updating ${data.progress} of ${data.total} jobs...`;
-            
             if (data.success) {
                 source.close();
                 btn.innerText = "✅ Done!";
-                fetchLatestJobs();
-                setTimeout(() => {
-                    resetUI();
-                }, 2000);
+                fetchJobs(true);
+                setTimeout(resetUI, 2000);
             }
-        } catch (e) {
-            console.error("Error parsing progress:", e, event.data);
-        }
+        } catch (e) { console.error("Error parsing progress:", e, event.data); }
     };
+    source.onerror = function () { source.close(); alert("Network error while updating tags."); resetUI(); };
 
-    source.onerror = function () {
-        source.close();
-        alert("Network error while updating tags.");
-        resetUI();
-    };
-    
     function resetUI() {
         btn.innerText = originalText;
         btn.disabled = false;
-        setTimeout(() => {
-            progressContainer.style.display = 'none';
-        }, 500); // hide slightly after so user sees 100%
+        setTimeout(() => { progressContainer.style.display = 'none'; }, 500);
     }
-}
-
-function fetchLatestJobs() {
-    fetch('/api/get_job_cards')
-        .then(response => response.text())
-        .then(html => {
-            const container = document.querySelector('.jobs-container');
-            container.innerHTML = html;
-
-            // Re-initialize jobCards list so filters keep working
-            window.jobCards = Array.from(document.querySelectorAll('.job-card'));
-            cacheJobCards();
-
-            // Re-populate dropdowns with new tags from newly added jobs
-            populateDropdowns();
-
-            // Re-apply filters and sorting
-            filterJobs();
-            sortJobs();
-
-            // Update total job count (which is handled in filterJobs, but just to be sure)
-        })
-        .catch(err => console.error("Error fetching latest jobs:", err));
 }
 
 function toggleTerminal(wrapperId) {
     const wrapper = document.getElementById(wrapperId);
-    if (wrapper.style.display === "none") {
-        wrapper.style.display = "block";
-    } else {
-        wrapper.style.display = "none";
-    }
+    wrapper.style.display = wrapper.style.display === "none" ? "block" : "none";
 }
 
-// --- EVALUATOR TERMINAL ---
+// ── Evaluator ────────────────────────────────────────────────────────────────
+
 function setupEvalTerminal() {
     const evalEventSource = new EventSource("/api/eval_stream");
     const evalTerminal = document.getElementById("evalTerminalOutput");
-    
     evalEventSource.onmessage = function (event) {
-        if (evalTerminal.innerHTML === "Waiting for jobs to evaluate...") {
-            evalTerminal.innerHTML = "";
-        }
+        if (evalTerminal.innerHTML === "Waiting for jobs to evaluate...") evalTerminal.innerHTML = "";
         evalTerminal.innerHTML += event.data + "<br>";
         evalTerminal.parentElement.scrollTop = evalTerminal.parentElement.scrollHeight;
-
         if (event.data.includes("-> Score:")) {
-            fetchLatestJobs();
+            // Refresh current view to show new eval score
+            fetchJobs(true);
         }
     };
-    
-    evalEventSource.onerror = function() {
+    evalEventSource.onerror = function () {
         console.log("Evaluator stream disconnected. Reconnecting in 5s...");
         evalEventSource.close();
         setTimeout(setupEvalTerminal, 5000);
     };
 }
-// Only connect to the evaluator stream when it is enabled
 if (typeof EVALUATOR_ENABLED !== 'undefined' && EVALUATOR_ENABLED) {
     setupEvalTerminal();
 }
@@ -679,9 +361,7 @@ if (typeof EVALUATOR_ENABLED !== 'undefined' && EVALUATOR_ENABLED) {
 function toggleEvaluator() {
     fetch('/api/toggle_evaluator', { method: 'POST' })
         .then(res => res.json())
-        .then(data => {
-            updateEvalButton(data.state);
-        });
+        .then(data => updateEvalButton(data.state));
 }
 
 function updateEvalButton(state) {
@@ -700,9 +380,7 @@ function syncEvaluatorState() {
     if (typeof EVALUATOR_ENABLED === 'undefined' || !EVALUATOR_ENABLED) return;
     fetch('/api/get_evaluator_state')
         .then(res => res.json())
-        .then(data => {
-            updateEvalButton(data.state);
-        });
+        .then(data => updateEvalButton(data.state));
 }
 
 function evaluateJob(btn, link) {
@@ -714,61 +392,45 @@ function evaluateJob(btn, link) {
     const originalText = btn.innerHTML;
     btn.innerHTML = "⏳ Evaluating...";
     btn.disabled = true;
-
     fetch('/api/evaluate_job', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ link: link })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
-        if(data.success) {
-            // Let the SSE terminal handle the refresh once evaluation is fully complete
-            // We just leave the button in the loading state for now
-        } else {
+        if (!data.success) {
             alert("Failed to queue evaluation.");
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
     })
-    .catch(error => {
-        console.error("Error evaluating job:", error);
-        alert("Failed to evaluate job due to network error.");
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    });
+    .catch(() => { alert("Failed to evaluate job due to network error."); btn.innerHTML = originalText; btn.disabled = false; });
 }
 
+// ── Export CSV ───────────────────────────────────────────────────────────────
+
 function exportFilteredJobsToCSV() {
-    if (!window.filteredCards || window.filteredCards.length === 0) {
-        alert("No jobs to export! Please adjust your filters.");
-        return;
-    }
-    
-    // Extract the exact URLs of all currently filtered jobs
-    const links = window.filteredCards.map(card => card.getAttribute('data-url'));
-    
-    fetch('/api/export_csv', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ links: links })
+    // Build the same query params as current filters but ask for all results (large limit)
+    const params = buildQueryParams(1, 9999);
+    fetch('/api/jobs?' + params)
+    .then(r => r.json())
+    .then(data => {
+        const links = data.jobs.map(j => j.link);
+        if (!links.length) { alert("No jobs to export!"); return; }
+        return fetch('/api/export_csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ links })
+        });
     })
     .then(response => {
-        if (!response.ok) {
-            throw new Error("Failed to export CSV from server.");
-        }
-        // Extract filename from headers if possible, otherwise use a fallback
+        if (!response || !response.ok) throw new Error("Export failed");
         let filename = "JobFinder_Report.csv";
         const disposition = response.headers.get('Content-Disposition');
         if (disposition && disposition.indexOf('filename=') !== -1) {
             const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
-            if (matches != null && matches[1]) { 
-                filename = matches[1].replace(/['"]/g, '');
-            }
+            if (matches && matches[1]) filename = matches[1].replace(/['"]/g, '');
         }
         return response.blob().then(blob => ({ blob, filename }));
     })
@@ -782,222 +444,487 @@ function exportFilteredJobsToCSV() {
         a.click();
         window.URL.revokeObjectURL(url);
     })
+    .catch(err => { console.error("Export error:", err); alert("An error occurred while exporting."); });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Server-side filter & render engine ───────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+const state = {
+    search: '',
+    status: 'Unseen',
+    sort: 'date-desc',
+    platforms: [],
+    keywords: [],
+    negKeywords: [],
+    descTags: [],
+    page: 1,
+    pageSize: window.PAGE_SIZE || 20,
+    isLoading: false,
+    hasMore: true,
+    totalCount: 0,
+};
+
+// Build URLSearchParams from current state
+function buildQueryParams(page, pageSize) {
+    const p = new URLSearchParams();
+    if (state.search) p.set('search', state.search);
+    if (state.status) p.set('status', state.status);
+    if (state.sort) p.set('sort', state.sort);
+    p.set('page', page || state.page);
+    p.set('page_size', pageSize || state.pageSize);
+    state.platforms.forEach(v => p.append('platform', v));
+    state.keywords.forEach(v => p.append('keyword', v));
+    state.negKeywords.forEach(v => p.append('neg_keyword', v));
+    state.descTags.forEach(v => p.append('desc_tag', v));
+    return p.toString();
+}
+
+let fetchAbort = null;
+
+function fetchJobs(reset = true) {
+    if (fetchAbort) fetchAbort.abort();
+    fetchAbort = new AbortController();
+
+    if (reset) {
+        state.page = 1;
+        state.hasMore = true;
+        hideSentinel();
+    }
+
+    state.isLoading = true;
+
+    if (reset) {
+        showSkeletons();
+    } else {
+        document.getElementById('loadingMore').style.display = 'block';
+    }
+
+    const params = buildQueryParams(state.page, state.pageSize);
+
+    fetch('/api/jobs?' + params, { signal: fetchAbort.signal })
+    .then(r => r.json())
+    .then(data => {
+        state.isLoading = false;
+        state.totalCount = data.total;
+        state.hasMore = data.has_more;
+
+        hideSkeletons();
+        document.getElementById('loadingMore').style.display = 'none';
+
+        const container = document.getElementById('jobsContainer');
+
+        if (reset) container.innerHTML = '';
+
+        data.jobs.forEach(job => {
+            container.appendChild(buildCard(job));
+        });
+
+        updateCountDisplay();
+        updateActiveChips();
+        updateResetBtn();
+
+        if (state.hasMore) {
+            showSentinel();
+        } else {
+            hideSentinel();
+        }
+    })
     .catch(err => {
-        console.error("Export error:", err);
-        alert("An error occurred while exporting the report.");
+        if (err.name === 'AbortError') return;
+        state.isLoading = false;
+        hideSkeletons();
+        document.getElementById('loadingMore').style.display = 'none';
+        console.error('Failed to fetch jobs:', err);
     });
 }
 
-// --- SCRAPER TERMINAL ---
-function populateDropdowns() {
-    // Populate Company dropdown
-    const companies = new Set();
-    const platforms = new Set();
-    window.jobCards.forEach(card => {
-        const comp = card.getAttribute('data-company');
-        if (comp && comp.trim()) companies.add(comp.trim().toLowerCase());
-        
-        const plat = card.getAttribute('data-platform');
-        if (plat && plat.trim()) platforms.add(plat.trim().toLowerCase());
+// Load the next page (called by IntersectionObserver)
+function loadNextPage() {
+    if (state.isLoading || !state.hasMore) return;
+    state.page += 1;
+    fetchJobs(false);
+}
+
+// ── Card builder (JS equivalent of job_card.html) ───────────────────────────
+
+function buildCard(job) {
+    const posKws = (job.keywords || '').split(',').map(s => s.trim()).filter(Boolean);
+    const negKws = (job.negative_keywords || '').split(',').map(s => s.trim()).filter(Boolean);
+    const descTags = (job.description_tags || '').split(',').map(s => s.trim()).filter(Boolean);
+    const negDescTags = (job.neg_description_tags || '').split(',').map(s => s.trim()).filter(Boolean);
+    const status = job.status || 'Unseen';
+    const isSpecial = posKws.length > (window.SPECIAL_THRESHOLD || 3);
+    const cardId = 'card-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+    const descId = 'desc-' + cardId;
+
+    const div = document.createElement('div');
+    div.className = `job-card status-${status.toLowerCase()}${isSpecial ? ' special-offer' : ''}`;
+    div.setAttribute('data-status', status);
+    div.setAttribute('data-url', job.link || '');
+    div.setAttribute('data-date', job.date_of_release || '');
+
+    // ── Eval badges
+    let evalHtml = '';
+    if (typeof EVALUATOR_ENABLED !== 'undefined' && EVALUATOR_ENABLED) {
+        if (job.eval_score !== '' && job.eval_score !== null && job.eval_score !== undefined) {
+            const score = parseInt(job.eval_score);
+            const evalColor = score >= 70 ? 'green' : (score >= 40 ? 'yellow' : 'red');
+            evalHtml += `<span class="eval-badge eval-${evalColor}" data-reason="${esc(job.eval_reason)}" onclick="openEvalModal(this.getAttribute('data-reason'))" title="Click to read AI reasoning">✨ Match: ${score}%</span>`;
+            if (job.selected_cv) {
+                evalHtml += `<span class="keyword-badge" title="Best CV Match" style="background-color:#34495e;color:white;">📄 ${esc(job.selected_cv)}</span>`;
+            }
+            if (job.cover_letter) {
+                const escapedLetter = esc(job.cover_letter).replace(/\n/g, '\\n');
+                evalHtml += `<button class="eval-badge eval-green" style="background:linear-gradient(135deg,#3498db,#2980b9);border:none;font-size:inherit;font-family:inherit;" data-letter="${escapedLetter}" onclick="copyCoverLetterDirectly(this)" title="Click to copy Cover Letter">📋 Cover Letter</button>`;
+            }
+            evalHtml += `<button class="eval-badge" style="background-color:#9b59b6;color:white;border:none;font-size:inherit;font-family:inherit;margin-left:5px;" onclick="evaluateJob(this,'${esc(job.link)}')" title="Click to re-evaluate this job">🔄 Reevaluate</button>`;
+        } else {
+            evalHtml += `<button class="eval-badge eval-yellow" style="border:none;font-size:inherit;font-family:inherit;" onclick="evaluateJob(this,'${esc(job.link)}')" title="Click to manually evaluate this job">✨ Evaluate</button>`;
+            if (status === 'Unseen') {
+                evalHtml += `<span class="eval-badge eval-green blurred-eval loading-blink">✨ Match: 100%</span>`;
+                evalHtml += `<span class="keyword-badge blurred-eval loading-blink" style="background-color:#34495e;color:white;">📄 Software</span>`;
+                evalHtml += `<button class="eval-badge eval-green blurred-eval loading-blink" style="background:linear-gradient(135deg,#3498db,#2980b9);border:none;">📋 Cover Letter</button>`;
+            }
+        }
+    }
+
+    // ── Keyword badges
+    let kwHtml = '';
+    if (posKws.length > 0) kwHtml += `<span class="count-badge pos-count" title="Positive Keywords">${posKws.length}</span> `;
+    posKws.forEach(kw => { kwHtml += `<span class="keyword-badge">${esc(kw)}</span>`; });
+    if (negKws.length > 0) kwHtml += `<span class="count-badge neg-count" title="Negative Keywords">${negKws.length}</span> `;
+    negKws.forEach(kw => { kwHtml += `<span class="keyword-badge negative-badge">${esc(kw)}</span>`; });
+
+    // ── Desc tag badges
+    let descTagHtml = '';
+    if (descTags.length > 0 || negDescTags.length > 0) {
+        descTagHtml = `<div class="job-meta" style="margin-top:5px;"><span class="meta-item" style="color:#7f8c8d;font-size:0.85em;">🔍 `;
+        if (descTags.length) descTagHtml += `<span class="count-badge pos-count" title="Positive Description Tags">${descTags.length}</span> `;
+        descTags.forEach(t => { descTagHtml += `<span class="keyword-badge" style="background-color:transparent;border:1px solid #bdc3c7;color:#7f8c8d;font-size:0.9em;padding:2px 6px;margin-left:4px;">${esc(t)}</span>`; });
+        if (negDescTags.length) descTagHtml += `<span class="count-badge neg-count" title="Negative Description Tags">${negDescTags.length}</span> `;
+        negDescTags.forEach(t => { descTagHtml += `<span class="keyword-badge negative-badge" style="background-color:transparent;font-size:0.9em;padding:2px 6px;margin-left:4px;">${esc(t)}</span>`; });
+        descTagHtml += `</span></div>`;
+    }
+
+    // ── CV select options
+    const cvTypes = window.CV_TYPES || [];
+    let cvOptions = `<option value="" ${!job.cv_type ? 'selected' : ''}>Select CV...</option>`;
+    if (job.cv_type && !cvTypes.includes(job.cv_type)) {
+        cvOptions += `<option value="${esc(job.cv_type)}" selected>${esc(job.cv_type)} (Legacy)</option>`;
+    }
+    cvTypes.forEach(cv => { cvOptions += `<option value="${esc(cv)}" ${job.cv_type === cv ? 'selected' : ''}>${esc(cv)} CV</option>`; });
+
+    // ── App state options
+    const appStates = window.APP_STATES || [];
+    const currentState = job.app_state || 'Not Applied';
+    let stateOptions = '';
+    if (!appStates.includes(currentState)) {
+        stateOptions += `<option value="${esc(currentState)}" selected>${esc(currentState)} (Legacy)</option>`;
+    }
+    appStates.forEach(s => { stateOptions += `<option value="${esc(s)}" ${currentState === s ? 'selected' : ''}>${esc(s)}</option>`; });
+
+    // ── Status buttons
+    const statusBtns = [
+        { s: 'Unseen', e: '🆕', cls: 'btn-unseen' },
+        { s: 'Later',  e: '⏳', cls: 'btn-later' },
+        { s: 'Applied',e: '✅', cls: 'btn-applied' },
+        { s: 'Skipped',e: '❌', cls: 'btn-skipped' },
+    ].map(({ s, e, cls }) =>
+        `<button class="status-btn ${cls}${status === s ? ' active' : ''}" onclick="changeStatus(this,'${esc(job.link)}','${s}')" title="${s}">${e}</button>`
+    ).join('');
+
+    div.innerHTML = `
+        <h2 class="job-title"><a href="${esc(job.link)}" target="_blank" class="title-link">${esc(job.title)}</a></h2>
+        <div class="job-meta">
+            <span class="meta-item">${evalHtml}</span>
+            <span class="meta-item"><span class="icon">🏢</span> <span class="company-name">${esc(job.company || 'Unknown')}</span></span>
+            ${job.platform ? `<span class="meta-item"><span class="icon">🌐</span> <span class="platform-name">${esc(job.platform)}</span></span>` : ''}
+            <span class="meta-item"><span class="icon">📅</span> <span class="date-text" title="${esc(job.date_of_release)}">${timeago(job.discovered_at || job.date_of_release)}</span></span>
+            <span class="meta-item">${kwHtml}</span>
+            <span class="meta-item cv-selector-wrapper">
+                CV: <select class="cv-select" onchange="changeCvType(this,'${esc(job.link)}')">${cvOptions}</select>
+                | State: <select class="cv-select app-state-select" onchange="changeAppState(this,'${esc(job.link)}')">${stateOptions}</select>
+            </span>
+        </div>
+        ${descTagHtml}
+        <div class="desc-header">
+            <div class="desc-header-left">
+                <button class="toggle-desc-btn" onclick="toggleDescription('${descId}',this)" title="Show/Hide Description">📄</button>
+                <button class="note-btn" data-note-link="${esc(job.link)}" data-note="${esc(job.note || '')}" onclick="openNoteModal('${esc(job.link)}')" title="View/Edit Note">📝</button>
+                <button class="copy-btn" onclick="copyToClipboard('${descId}',this)" title="Copy Description">📋</button>
+            </div>
+            <div class="desc-header-right">
+                <div class="status-btn-group">${statusBtns}</div>
+                <button class="clear-btn" onclick="deleteJob(this,'${esc(job.link)}')" title="Delete Job">🗑️</button>
+            </div>
+        </div>
+        <div class="job-description" id="${descId}" style="display:none;">${job.description || ''}</div>
+    `;
+
+    return div;
+}
+
+// ── Count display ─────────────────────────────────────────────────────────────
+
+function updateCountDisplay() {
+    const el = document.getElementById('jobCountDisplay');
+    if (!el) return;
+    const loaded = document.querySelectorAll('#jobsContainer .job-card').length;
+    el.textContent = `Showing ${loaded} of ${state.totalCount} offers`;
+}
+
+// ── Status tabs ───────────────────────────────────────────────────────────────
+
+function setStatusTab(btn) {
+    document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    state.status = btn.getAttribute('data-status') || '';
+    fetchJobs(true);
+}
+
+function refreshStatusCounts() {
+    fetch('/api/filter_options')
+    .then(r => r.json())
+    .then(opts => {
+        const counts = opts.status_counts || {};
+        const total = Object.values(counts).reduce((a, b) => a + b, 0);
+        const el = document.getElementById('tabCount-all');
+        if (el) el.textContent = total ? `(${total})` : '';
+        ['Unseen', 'Later', 'Applied', 'Skipped'].forEach(s => {
+            const c = document.getElementById(`tabCount-${s}`);
+            if (c) c.textContent = counts[s] ? `(${counts[s]})` : '';
+        });
     });
+}
 
-    const companyDropdown = document.getElementById('companyDropdown');
-    if (companyDropdown) {
-        const checkedVals = Array.from(companyDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
-        companyDropdown.innerHTML = '';
-        Array.from(companies).sort().forEach(comp => {
-            const label = document.createElement('label');
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.cursor = 'pointer';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = comp;
-            checkbox.className = 'company-checkbox';
-            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
-            checkbox.style.marginRight = '8px';
-            checkbox.onchange = filterJobs;
-            label.appendChild(checkbox);
-            
-            const displayComp = comp.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-            label.appendChild(document.createTextNode(displayComp));
-            companyDropdown.appendChild(label);
-        });
+// ── Advanced filter dropdowns ─────────────────────────────────────────────────
+
+function toggleFilterDropdown(id) {
+    const el = document.getElementById(id);
+    const isOpen = el.style.display !== 'none';
+    // Close all
+    document.querySelectorAll('.filter-dropdown').forEach(d => d.style.display = 'none');
+    if (!isOpen) el.style.display = 'block';
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.filter-dropdown-wrap')) {
+        document.querySelectorAll('.filter-dropdown').forEach(d => d.style.display = 'none');
     }
+});
 
-    const platformDropdown = document.getElementById('platformDropdown');
-    if (platformDropdown) {
-        const checkedVals = Array.from(platformDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
-        platformDropdown.innerHTML = '';
-        Array.from(platforms).sort().forEach(plat => {
-            const label = document.createElement('label');
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.cursor = 'pointer';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = plat;
-            checkbox.className = 'platform-checkbox';
-            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
-            checkbox.style.marginRight = '8px';
-            checkbox.onchange = filterJobs;
-            label.appendChild(checkbox);
-            
-            const displayPlat = plat.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-            label.appendChild(document.createTextNode(displayPlat));
-            platformDropdown.appendChild(label);
-        });
-    }
+function filterDropdownSearch(input, dropId) {
+    const val = input.value.toLowerCase();
+    const list = document.getElementById(dropId + 'List');
+    if (!list) return;
+    list.querySelectorAll('label').forEach(label => {
+        label.style.display = label.textContent.toLowerCase().includes(val) ? '' : 'none';
+    });
+}
 
-    // Populate the keyword dropdowns
-    const keywords = new Set();
-    const negKeywords = new Set();
+function buildDropdownList(listId, items, stateArray, labelFn, onChange) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    list.innerHTML = '';
+    items.forEach(item => {
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = item;
+        cb.checked = stateArray.includes(item);
+        cb.style.marginRight = '8px';
+        cb.onchange = () => { onChange(item, cb.checked); fetchJobs(true); updatePillLabel(); };
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(labelFn ? labelFn(item) : item));
+        list.appendChild(label);
+    });
+}
 
-    const posBadges = document.querySelectorAll('.keyword-badge:not(.negative-badge)');
-    posBadges.forEach(b => keywords.add(b.innerText.trim().toLowerCase()));
+function updatePillLabel() {
+    const pairs = [
+        { labelId: 'platformPillLabel', arr: state.platforms, def: 'Platform' },
+        { labelId: 'keywordPillLabel', arr: state.keywords, def: 'Keyword' },
+        { labelId: 'negKwPillLabel', arr: state.negKeywords, def: '⚠ Neg. Keyword' },
+    ];
+    pairs.forEach(({ labelId, arr, def }) => {
+        const el = document.getElementById(labelId);
+        if (!el) return;
+        el.textContent = arr.length > 0 ? `${def} (${arr.length})` : def;
+        const btn = el.closest('.filter-pill-btn');
+        if (btn) btn.classList.toggle('active', arr.length > 0);
+    });
+}
 
-    const negBadges = document.querySelectorAll('.negative-badge');
-    negBadges.forEach(b => negKeywords.add(b.innerText.trim().toLowerCase()));
+function loadFilterOptions() {
+    fetch('/api/filter_options')
+    .then(r => r.json())
+    .then(opts => {
+        buildDropdownList('platformDropList', opts.platforms, state.platforms, null,
+            (v, checked) => { if (checked) state.platforms.push(v); else state.platforms = state.platforms.filter(x => x !== v); });
+        buildDropdownList('keywordDropList', opts.keywords, state.keywords, null,
+            (v, checked) => { if (checked) state.keywords.push(v); else state.keywords = state.keywords.filter(x => x !== v); });
+        buildDropdownList('negKwDropList', opts.neg_keywords, state.negKeywords, null,
+            (v, checked) => { if (checked) state.negKeywords.push(v); else state.negKeywords = state.negKeywords.filter(x => x !== v); });
 
-    const keywordDropdown = document.getElementById('keywordDropdown');
-    if (keywordDropdown) {
-        const checkedVals = Array.from(keywordDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
-        keywordDropdown.innerHTML = '';
-        Array.from(keywords).sort().forEach(kw => {
-            const label = document.createElement('label');
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.cursor = 'pointer';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = kw;
-            checkbox.className = 'kw-checkbox';
-            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
-            checkbox.style.marginRight = '8px';
-            checkbox.onchange = filterJobs;
-            label.appendChild(checkbox);
-            label.appendChild(document.createTextNode(kw.charAt(0).toUpperCase() + kw.slice(1)));
-            keywordDropdown.appendChild(label);
-        });
-    }
-
-    const negKeywordDropdown = document.getElementById('negKeywordDropdown');
-    if (negKeywordDropdown) {
-        const checkedVals = Array.from(negKeywordDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
-        negKeywordDropdown.innerHTML = '';
-        Array.from(negKeywords).sort().forEach(kw => {
-            const label = document.createElement('label');
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.cursor = 'pointer';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = kw;
-            checkbox.className = 'neg-kw-checkbox';
-            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
-            checkbox.style.marginRight = '8px';
-            checkbox.onchange = filterJobs;
-            label.appendChild(checkbox);
-            label.appendChild(document.createTextNode(kw.charAt(0).toUpperCase() + kw.slice(1)));
-            negKeywordDropdown.appendChild(label);
-        });
-    }
-
-    // Populate Description Tags dropdown
-    const descTags = new Set();
-    window.jobCards.forEach(card => {
-        const tags = (card.getAttribute('data-desc-tags') || "").split(',');
-        tags.forEach(t => {
-            if (t.trim()) descTags.add(t.trim().toLowerCase());
+        // Populate tab counts
+        const counts = opts.status_counts || {};
+        const total = Object.values(counts).reduce((a, b) => a + b, 0);
+        const elAll = document.getElementById('tabCount-all');
+        if (elAll) elAll.textContent = total ? `(${total})` : '';
+        ['Unseen', 'Later', 'Applied', 'Skipped'].forEach(s => {
+            const c = document.getElementById(`tabCount-${s}`);
+            if (c) c.textContent = counts[s] ? `(${counts[s]})` : '';
         });
     });
+}
 
-    const descTagDropdown = document.getElementById('descTagDropdown');
-    if (descTagDropdown) {
-        const checkedVals = Array.from(descTagDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
-        descTagDropdown.innerHTML = '';
-        Array.from(descTags).sort().forEach(tag => {
-            const label = document.createElement('label');
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.cursor = 'pointer';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = tag;
-            checkbox.className = 'desc-tag-checkbox';
-            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
-            checkbox.style.marginRight = '8px';
-            checkbox.onchange = filterJobs;
-            label.appendChild(checkbox);
-            label.appendChild(document.createTextNode(tag.charAt(0).toUpperCase() + tag.slice(1)));
-            descTagDropdown.appendChild(label);
-        });
-    }
+// ── Active chips ──────────────────────────────────────────────────────────────
 
-    // Populate Negative Description Tags dropdown
-    const negDescTags = new Set();
-    window.jobCards.forEach(card => {
-        const tags = (card.getAttribute('data-neg-desc-tags') || "").split(',');
-        tags.forEach(t => {
-            if (t.trim()) negDescTags.add(t.trim().toLowerCase());
-        });
-    });
+function updateActiveChips() {
+    const container = document.getElementById('activeChips');
+    if (!container) return;
+    container.innerHTML = '';
 
-    const negDescTagDropdown = document.getElementById('negDescTagDropdown');
-    if (negDescTagDropdown) {
-        const checkedVals = Array.from(negDescTagDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
-        negDescTagDropdown.innerHTML = '';
-        Array.from(negDescTags).sort().forEach(tag => {
-            const label = document.createElement('label');
-            label.style.display = 'block';
-            label.style.marginBottom = '5px';
-            label.style.cursor = 'pointer';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = tag;
-            checkbox.className = 'neg-desc-tag-checkbox';
-            if (checkedVals.includes(checkbox.value)) checkbox.checked = true;
-            checkbox.style.marginRight = '8px';
-            checkbox.onchange = filterJobs;
-            label.appendChild(checkbox);
-            label.appendChild(document.createTextNode(tag.charAt(0).toUpperCase() + tag.slice(1)));
-            negDescTagDropdown.appendChild(label);
-        });
+    const addChip = (label, onRemove) => {
+        const chip = document.createElement('span');
+        chip.className = 'active-chip';
+        chip.innerHTML = `${esc(label)} <button onclick="(${onRemove.toString()})(); fetchJobs(true); updateActiveChips(); updateResetBtn();">×</button>`;
+        container.appendChild(chip);
+    };
+
+    if (state.search) addChip(`Search: "${state.search}"`, () => { state.search = ''; document.getElementById('searchInput').value = ''; });
+    state.platforms.forEach(v => addChip(`Platform: ${v}`, () => { state.platforms = state.platforms.filter(x => x !== v); updatePillLabel(); }));
+    state.keywords.forEach(v => addChip(`Keyword: ${v}`, () => { state.keywords = state.keywords.filter(x => x !== v); updatePillLabel(); }));
+    state.negKeywords.forEach(v => addChip(`⚠ Neg: ${v}`, () => { state.negKeywords = state.negKeywords.filter(x => x !== v); updatePillLabel(); }));
+}
+
+function updateResetBtn() {
+    const btn = document.getElementById('resetFiltersBtn');
+    if (!btn) return;
+    const hasFilters = state.search || state.platforms.length || state.keywords.length || state.negKeywords.length;
+    btn.style.display = hasFilters ? 'inline-flex' : 'none';
+}
+
+function resetAllFilters() {
+    state.search = '';
+    state.platforms = [];
+    state.keywords = [];
+    state.negKeywords = [];
+    state.descTags = [];
+    document.getElementById('searchInput').value = '';
+    updatePillLabel();
+    // Uncheck all dropdown checkboxes
+    document.querySelectorAll('.filter-dropdown-list input[type=checkbox]').forEach(cb => cb.checked = false);
+    fetchJobs(true);
+}
+
+function clearSearch() {
+    state.search = '';
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchClearBtn').style.display = 'none';
+    fetchJobs(true);
+}
+
+// ── Skeleton loaders ──────────────────────────────────────────────────────────
+
+function showSkeletons() {
+    const container = document.getElementById('jobsContainer');
+    container.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+        const sk = document.createElement('div');
+        sk.className = 'skeleton-card';
+        container.appendChild(sk);
     }
 }
 
-function cacheJobCards() {
-    window.jobCards.forEach(card => {
-        card._cache = {
-            title: card.getAttribute('data-title') || "",
-            kws: (card.getAttribute('data-keyword') || "").toLowerCase(),
-            company: (card.getAttribute('data-company') || "").toLowerCase(),
-            platform: (card.getAttribute('data-platform') || "").toLowerCase(),
-            status: card.getAttribute('data-status') || "Unseen",
-            posKwsList: (card.getAttribute('data-pos-keyword') || "").split(',').map(s => s.trim()),
-            negKwsList: (card.getAttribute('data-neg-keyword') || "").split(',').map(s => s.trim()),
-            descTagsList: (card.getAttribute('data-desc-tags') || "").split(',').map(s => s.trim()),
-            negDescTagsList: (card.getAttribute('data-neg-desc-tags') || "").split(',').map(s => s.trim()),
-            dateNum: new Date(card.getAttribute('data-date')).getTime()
-        };
-    });
+function hideSkeletons() {
+    document.querySelectorAll('.skeleton-card').forEach(el => el.remove());
 }
+
+// ── IntersectionObserver for infinite scroll ──────────────────────────────────
+
+function showSentinel() {
+    const el = document.getElementById('scrollSentinel');
+    if (el) el.style.visibility = 'visible';
+}
+function hideSentinel() {
+    const el = document.getElementById('scrollSentinel');
+    if (el) el.style.visibility = 'hidden';
+}
+
+// ── Scraper: prepend newest job ───────────────────────────────────────────────
+
+function prependLatestJob() {
+    fetch('/api/jobs?sort=date-desc&page=1&page_size=1')
+    .then(r => r.json())
+    .then(data => {
+        if (!data.jobs || !data.jobs.length) return;
+        const job = data.jobs[0];
+        // Don't prepend if it's already in the DOM
+        if (document.querySelector(`[data-url="${CSS.escape(job.link)}"]`)) return;
+        const card = buildCard(job);
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(-10px)';
+        card.style.transition = 'opacity 0.4s, transform 0.4s';
+        const container = document.getElementById('jobsContainer');
+        container.prepend(card);
+        requestAnimationFrame(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        });
+        state.totalCount += 1;
+        updateCountDisplay();
+        refreshStatusCounts();
+    })
+    .catch(err => console.error('Failed to fetch latest job:', err));
+}
+
+// ── Debounce search input ─────────────────────────────────────────────────────
+
+let searchTimeout;
+function onSearchInput() {
+    const val = document.getElementById('searchInput').value;
+    document.getElementById('searchClearBtn').style.display = val ? 'flex' : 'none';
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        state.search = val;
+        fetchJobs(true);
+    }, 300);
+}
+
+function onFilterChange() {
+    state.sort = document.getElementById('sortSelect').value;
+    fetchJobs(true);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.jobCards = Array.from(document.querySelectorAll('.job-card'));
-    
-    // Pre-cache DOM attributes to massive speed up filtering and sorting
-    cacheJobCards();
+    state.pageSize = window.PAGE_SIZE || 20;
 
-    window.originalJobCards = [...window.jobCards];
-    window.filteredCards = [...window.jobCards];
-    window.currentVisibleCount = window.PAGE_SIZE || 20;
+    // Wire search input
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.addEventListener('input', onSearchInput);
 
-    populateDropdowns();
+    // IntersectionObserver for infinite scroll
+    const sentinel = document.getElementById('scrollSentinel');
+    if (sentinel && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && !state.isLoading && state.hasMore) {
+                loadNextPage();
+            }
+        }, { rootMargin: '200px' });
+        observer.observe(sentinel);
+    }
 
-    // Initial filter, sort, and render
-    filterJobs();
-    
-    // Sync UI states with backend
+    // Load filter options (platforms, keywords, neg keywords)
+    loadFilterOptions();
+
+    // Initial job fetch
+    fetchJobs(true);
+
+    // Sync evaluator button state
     syncEvaluatorState();
 });
