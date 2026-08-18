@@ -2,6 +2,7 @@ import time
 import json
 import os
 import re
+import threading
 import yaml
 import traceback
 import database
@@ -38,7 +39,81 @@ current_state = STATE_RUNNING
 # Cache for CV text extraction
 uploaded_files_cache = {}
 
-FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+# General-purpose text models listed in Google's Gemini API pricing catalogue.
+# The order is intentional: the evaluator tries the most capable model first,
+# then moves towards faster/cheaper models when a model is unavailable or
+# temporarily rate-limited. Keep this list free of audio, image, embedding,
+# and tool-only models because the evaluator requests JSON text output.
+DEFAULT_MODEL_PRIORITY = [
+    "gemini-3.1-pro-preview",
+    "gemini-2.5-pro",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3-flash-preview",
+    "gemini-2.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash-lite-preview-09-2025",
+]
+
+# Backwards-compatible alias for callers that imported the old constant.
+FALLBACK_MODELS = DEFAULT_MODEL_PRIORITY
+DEFAULT_MODEL_COOLDOWN_S = 300
+MODEL_COOLDOWNS = {}
+MODEL_COOLDOWNS_LOCK = threading.Lock()
+
+
+def get_model_priority(config):
+    """Return the configured model order, preserving YAML list order."""
+    configured = config.get("evaluator_models")
+    if isinstance(configured, str):
+        configured = [configured]
+    if not isinstance(configured, (list, tuple)):
+        configured = []
+
+    models = []
+    for model in configured:
+        if isinstance(model, str) and model.strip() and model.strip() not in models:
+            models.append(model.strip())
+
+    for model in DEFAULT_MODEL_PRIORITY:
+        if model not in models:
+            models.append(model)
+
+    return models or list(DEFAULT_MODEL_PRIORITY)
+
+
+def get_model_cooldown_s(config):
+    """Return the temporary model quarantine duration in seconds."""
+    try:
+        return max(0.0, float(config.get("evaluator_model_cooldown_s", DEFAULT_MODEL_COOLDOWN_S)))
+    except (TypeError, ValueError):
+        return float(DEFAULT_MODEL_COOLDOWN_S)
+
+
+def _model_cooldown_remaining(model_name):
+    now = time.monotonic()
+    with MODEL_COOLDOWNS_LOCK:
+        entry = MODEL_COOLDOWNS.get(model_name)
+        if not entry:
+            return 0.0, ""
+        remaining = entry["until"] - now
+        if remaining <= 0:
+            MODEL_COOLDOWNS.pop(model_name, None)
+            return 0.0, ""
+        return remaining, entry.get("reason", "temporary failure")
+
+
+def _cooldown_model(model_name, reason, cooldown_s):
+    if cooldown_s <= 0:
+        return
+    with MODEL_COOLDOWNS_LOCK:
+        MODEL_COOLDOWNS[model_name] = {
+            "until": time.monotonic() + cooldown_s,
+            "reason": reason,
+        }
 
 def load_config():
     return utils.load_config()
@@ -174,30 +249,76 @@ def _call_gemini_single(api_key, model_name, instruction_text, prompt_parts):
     
     raise RuntimeError("No Gemini SDK available. Install google-genai: pip install google-genai")
 
-def _call_gemini(api_key, model_name, instruction_text, prompt_parts, log_queue=None):
+def _call_gemini(api_key, model_names, instruction_text, prompt_parts, log_queue=None,
+                 model_cooldown_s=DEFAULT_MODEL_COOLDOWN_S):
     """
-    Calls Gemini with automatic model fallback on error.
-    """
-    models_to_try = [model_name] + [m for m in FALLBACK_MODELS if m != model_name]
-    last_error = None
+    Calls Gemini using the configured priority order and falls back on error.
 
-    for m in models_to_try:
+    ``model_names`` may be a string for backwards compatibility, or an
+    ordered list/tuple. The first entry always has the highest priority.
+    """
+    if isinstance(model_names, str):
+        models_to_try = [model_names] + [m for m in DEFAULT_MODEL_PRIORITY if m != model_names]
+    else:
+        models_to_try = []
+        for model in model_names or DEFAULT_MODEL_PRIORITY:
+            if isinstance(model, str) and model.strip() and model.strip() not in models_to_try:
+                models_to_try.append(model.strip())
+        if not models_to_try:
+            models_to_try = list(DEFAULT_MODEL_PRIORITY)
+
+    last_error = None
+    attempted_model = False
+
+    for index, m in enumerate(models_to_try, start=1):
+        remaining, reason = _model_cooldown_remaining(m)
+        if remaining:
+            emit_log(
+                f"  -> Skipping Gemini model {m}: {reason}; "
+                f"cooldown {remaining:.0f}s remaining",
+                log_queue,
+            )
+            continue
+
+        attempted_model = True
         try:
+            emit_log(f"  -> Trying Gemini model {index}/{len(models_to_try)}: {m}", log_queue)
             return _call_gemini_single(api_key, m, instruction_text, prompt_parts)
         except Exception as e:
             last_error = e
             err_str = str(e)
-            if "404" in err_str or "not found" in err_str.lower() or "unsupported" in err_str.lower():
-                emit_log(f"[!] Model '{m}' unavailable, trying fallback...", log_queue)
+            err_lower = err_str.lower()
+            if (
+                "404" in err_str
+                or "403" in err_str
+                or "not found" in err_lower
+                or "unsupported" in err_lower
+                or "permission" in err_lower
+                or "forbidden" in err_lower
+                or "invalid model" in err_lower
+            ):
+                _cooldown_model(m, "unavailable", model_cooldown_s)
+                emit_log(
+                    f"[!] Model '{m}' unavailable; cooling it down for "
+                    f"{model_cooldown_s:.0f}s and trying fallback...",
+                    log_queue,
+                )
                 continue
             elif "429" in err_str or "quota" in err_str.lower():
-                emit_log(f"[!] Rate limit on '{m}'. Trying fallback model...", log_queue)
+                _cooldown_model(m, "rate limited", model_cooldown_s)
+                emit_log(
+                    f"[!] Rate limit on '{m}'; cooling it down for "
+                    f"{model_cooldown_s:.0f}s and trying fallback model...",
+                    log_queue,
+                )
                 continue
             else:
                 # Other error, try fallback
                 emit_log(f"[!] Error calling '{m}': {e}. Trying fallback...", log_queue)
                 continue
 
+    if not attempted_model:
+        raise RuntimeError("All Gemini models are in cooldown; no API request was made.")
     raise last_error or RuntimeError("All Gemini model fallbacks failed.")
 
 def load_instruction():
@@ -212,7 +333,8 @@ def load_instruction():
     with open("llm_instruction.txt", "r", encoding="utf-8") as f:
         return f.read()
 
-def evaluate_job_data(job, api_key, model_name, instruction_text, gemini_cvs, log_queue=None):
+def evaluate_job_data(job, api_key, model_names, instruction_text, gemini_cvs, log_queue=None,
+                      model_cooldown_s=DEFAULT_MODEL_COOLDOWN_S):
     """
     Evaluates a single job dict and updates the database.
     Returns parsed result dict or None on error.
@@ -234,7 +356,14 @@ def evaluate_job_data(job, api_key, model_name, instruction_text, gemini_cvs, lo
     
     prompt = [job_details] + gemini_cvs
     
-    res_text = _call_gemini(api_key, model_name, instruction_text, prompt, log_queue)
+    res_text = _call_gemini(
+        api_key,
+        model_names,
+        instruction_text,
+        prompt,
+        log_queue,
+        model_cooldown_s,
+    )
     data = _parse_response(res_text)
     
     score = max(0, min(100, int(data.get("eval_score", 0))))
@@ -245,8 +374,20 @@ def evaluate_job_data(job, api_key, model_name, instruction_text, gemini_cvs, lo
     database.update_job_eval(job['link'], score, reason, selected_cv, cover_letter)
     emit_log(f"  -> Score: {score}/100 | Best CV: {selected_cv or 'None'} | Job: {job.get('title', '')[:40]}", log_queue)
     
-    # Broadcast event for frontend real-time update
-    emit_log(f"EVAL_UPDATE:{job['link']}:{score}:{selected_cv}", log_queue)
+    # Broadcast a structured event for frontend real-time update. JSON avoids
+    # delimiter bugs when URLs contain ':' (for example https://... or query
+    # strings) and carries the already-persisted evaluation fields directly.
+    eval_event = {
+        "link": job["link"],
+        "eval_score": score,
+        "eval_reason": reason,
+        "selected_cv": selected_cv,
+        "cover_letter": cover_letter,
+    }
+    emit_log(
+        "EVAL_UPDATE:" + json.dumps(eval_event, ensure_ascii=False, separators=(",", ":")),
+        log_queue,
+    )
     
     return {
         "link": job['link'],
@@ -274,7 +415,10 @@ def main_loop(log_queue=None):
         current_state = STATE_STOPPED
         return
         
-    model_name = config.get("evaluator_model", "gemini-2.5-flash")
+    model_names = get_model_priority(config)
+    emit_log(f"Gemini model priority: {' -> '.join(model_names)}", log_queue)
+    model_cooldown_s = get_model_cooldown_s(config)
+    emit_log(f"Unavailable-model cooldown: {model_cooldown_s:.0f}s", log_queue)
     delay_s = max(1, config.get("evaluator_delay_s", 5))
     cv_paths = config.get("cv_paths", [])
     instruction_text = load_instruction()
@@ -314,7 +458,15 @@ def main_loop(log_queue=None):
                 emit_log(f"\nEvaluating: {job.get('title', 'Unknown')} ({job.get('company', '')})...", log_queue)
                 
                 try:
-                    evaluate_job_data(job, api_key, model_name, instruction_text, gemini_cvs, log_queue)
+                    evaluate_job_data(
+                        job,
+                        api_key,
+                        model_names,
+                        instruction_text,
+                        gemini_cvs,
+                        log_queue,
+                        model_cooldown_s,
+                    )
                 except Exception as e:
                     emit_log(f"[!] Evaluation failed for '{job.get('title', '')}': {e}", log_queue)
                     if "429" in str(e) or "quota" in str(e).lower():
@@ -351,7 +503,9 @@ def evaluate_job_by_link(link, log_queue=None):
         emit_log("[!] Gemini API key not set.", log_queue)
         return None
 
-    model_name = config.get("evaluator_model", "gemini-2.5-flash")
+    model_names = get_model_priority(config)
+    emit_log(f"Gemini model priority: {' -> '.join(model_names)}", log_queue)
+    model_cooldown_s = get_model_cooldown_s(config)
     instruction_text = load_instruction()
     cv_paths = config.get("cv_paths", [])
     gemini_cvs = get_uploaded_cvs(cv_paths, log_queue) if cv_paths else []
@@ -369,7 +523,15 @@ def evaluate_job_by_link(link, log_queue=None):
     emit_log(f"\nManually Evaluating: {job.get('title', '')} ({job.get('company', '')})...", log_queue)
     
     try:
-        res = evaluate_job_data(job, api_key, model_name, instruction_text, gemini_cvs, log_queue)
+        res = evaluate_job_data(
+            job,
+            api_key,
+            model_names,
+            instruction_text,
+            gemini_cvs,
+            log_queue,
+            model_cooldown_s,
+        )
         return res
     except Exception as e:
         emit_log(f"[!] Manual evaluation failed: {e}", log_queue)

@@ -92,7 +92,8 @@ python app.py
 |-----|-------------|---------|
 | `port` | Server port | `4567` |
 | `gemini_api_key` | Google Gemini API key | — |
-| `evaluator_model` | Gemini model for evaluation | `gemini-2.5-flash` |
+| `evaluator_models` | Ordered Gemini text-model priority list; falls back to the next model on an API error or rate limit | Highest-capability-first list in `config.example.yml` |
+| `evaluator_model_cooldown_s` | Seconds to skip a model after an unavailable-model or rate-limit error | `300` |
 | `evaluator_delay_s` | Seconds between evaluations (rate limiting) | `15` |
 | `cv_paths` | List of PDF CV file paths | `[]` |
 | `stellenwerk_link` | Stellenwerk search URL or list of URLs | — |

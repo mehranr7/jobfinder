@@ -47,7 +47,22 @@ glassdoor_pages: 1
 # Set to false to disable AI evaluation entirely (no API key required)
 enable_evaluator: true
 gemini_api_key: "YOUR_GEMINI_API_KEY_HERE"
-evaluator_model: "gemini-2.5-flash"
+evaluator_model_cooldown_s: 300  # Skip unavailable/rate-limited models for 5 minutes
+# General-purpose text models, ordered from highest accuracy/power to lowest
+# cost/highest throughput. The evaluator switches to the next model when the
+# current one is unavailable, unsupported, or rate-limited.
+evaluator_models:
+  - "gemini-3.1-pro-preview"
+  - "gemini-2.5-pro"
+  - "gemini-3.7-flash"
+  - "gemini-3.6-flash"
+  - "gemini-3.5-flash"
+  - "gemini-3-flash-preview"
+  - "gemini-2.5-flash"
+  - "gemini-3.5-flash-lite"
+  - "gemini-3.1-flash-lite"
+  - "gemini-2.5-flash-lite"
+  - "gemini-2.5-flash-lite-preview-09-2025"
 evaluator_delay_s: 15
 
 cv_paths:

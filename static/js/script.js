@@ -403,34 +403,42 @@ function setupEvalTerminal() {
     evalEventSource.onmessage = function (event) {
         const data = event.data;
         if (!data || data.trim() === ": keepalive") return;
+
+        // Structured update events are consumed by the card updater. Keep
+        // their JSON out of the terminal and show only a concise status line.
+        let evalUpdate = null;
+        if (data.includes("EVAL_UPDATE:")) {
+            const marker = 'EVAL_UPDATE:';
+            const markerIndex = data.indexOf(marker);
+            const payload = data.slice(markerIndex + marker.length).trim();
+            try {
+                evalUpdate = JSON.parse(payload);
+                if (evalUpdate && evalUpdate.link) {
+                    updateJobCardEvalInPlace(
+                        evalUpdate.link,
+                        evalUpdate.eval_score,
+                        evalUpdate.eval_reason,
+                        evalUpdate.selected_cv,
+                        evalUpdate.cover_letter
+                    );
+                }
+            } catch (error) {
+                console.warn('Could not parse evaluator update:', error);
+            }
+        }
         
         if (evalTerminal && evalTerminal.innerHTML === "Waiting for jobs to evaluate...") {
             evalTerminal.innerHTML = "";
         }
         
         if (evalTerminal) {
-            evalTerminal.innerHTML += data + "<br>";
+            // Keep evaluator/LLM text as text; preserve the server's line
+            // breaks without allowing model output to become HTML.
+            const displayData = evalUpdate
+                ? `✅ Evaluation complete: ${parseInt(evalUpdate.eval_score, 10) || 0}/100`
+                : data;
+            evalTerminal.innerHTML += esc(displayData).replace(/&lt;br&gt;/g, '<br>') + "<br>";
             evalTerminal.parentElement.scrollTop = evalTerminal.parentElement.scrollHeight;
-        }
-        
-        // Real-time in-place update for individual job cards
-        if (data.includes("EVAL_UPDATE:")) {
-            const raw = data.replace(/<br>/g, '');
-            const match = raw.match(/EVAL_UPDATE:([^:]+):([^:]+):?(.*)/);
-            if (match) {
-                const link = match[1];
-                const score = parseInt(match[2]);
-                const cv = match[3] || '';
-                fetch('/api/jobs?search=' + encodeURIComponent(link) + '&page=1&page_size=1')
-                .then(r => r.json())
-                .then(d => {
-                    if (d.jobs && d.jobs.length > 0) {
-                        const j = d.jobs[0];
-                        updateJobCardEvalInPlace(j.link, j.eval_score, j.eval_reason, j.selected_cv, j.cover_letter);
-                    }
-                })
-                .catch(() => {});
-            }
         }
     };
     
