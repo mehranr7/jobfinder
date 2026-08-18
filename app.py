@@ -341,11 +341,26 @@ def evaluate_job():
     # Run evaluation asynchronously so we don't block the UI
     def run_eval():
         evaluator.evaluate_job_by_link(link, broadcast_eval_log)
-        # We don't notify the UI directly here to refresh, but the eval terminal stream
-        # will print "-> Score: " which triggers a UI refresh anyway!
         
     threading.Thread(target=run_eval).start()
     return jsonify({'success': True})
+
+@app.route('/api/evaluate_all_unseen', methods=['POST'])
+def evaluate_all_unseen():
+    if not get_evaluator_enabled():
+        return jsonify({'error': 'Evaluator is disabled in config.yml'}), 503
+    
+    # Resume evaluator if paused
+    evaluator.current_state = evaluator.STATE_RUNNING
+    broadcast_eval_log("🚀 Batch evaluation triggered by user.")
+    
+    conn = database.get_connection()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM jobs WHERE status IN ('Unseen', 'Later') AND (eval_score IS NULL OR eval_reason IS NULL OR eval_reason = '' OR eval_reason LIKE 'Error%')")
+    count = c.fetchone()[0]
+    conn.close()
+    
+    return jsonify({'success': True, 'queued_count': count, 'state': evaluator.current_state})
 
 # --- EVALUATOR API ---
 
@@ -377,9 +392,13 @@ def eval_stream():
         evaluator_log_queues.append(q)
         try:
             while True:
-                msg = q.get()
-                formatted_msg = msg.replace('\n', '<br>')
-                yield f"data: {formatted_msg}\n\n"
+                try:
+                    msg = q.get(timeout=15)
+                    formatted_msg = msg.replace('\n', '<br>')
+                    yield f"data: {formatted_msg}\n\n"
+                except queue.Empty:
+                    # Keep-alive heartbeat comment so connection doesn't drop
+                    yield ": keepalive\n\n"
         except GeneratorExit:
             if q in evaluator_log_queues:
                 evaluator_log_queues.remove(q)

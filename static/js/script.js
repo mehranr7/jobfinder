@@ -336,22 +336,106 @@ function toggleTerminal(wrapperId) {
 
 // ── Evaluator ────────────────────────────────────────────────────────────────
 
+function buildEvalHtml(job, status) {
+    if (typeof EVALUATOR_ENABLED === 'undefined' || !EVALUATOR_ENABLED) return '';
+    
+    const hasScore = job.eval_score !== '' && job.eval_score !== null && job.eval_score !== undefined;
+    
+    if (hasScore) {
+        const score = parseInt(job.eval_score);
+        const evalColor = score >= 70 ? 'green' : (score >= 40 ? 'yellow' : 'red');
+        let html = `<span class="eval-badge eval-${evalColor}" data-reason="${esc(job.eval_reason)}" onclick="openEvalModal(this.getAttribute('data-reason'))" title="Click to read AI reasoning">✨ Match: ${score}%</span>`;
+        if (job.selected_cv) {
+            html += ` <span class="keyword-badge" title="Best CV Match" style="background-color:#34495e;color:white;">📄 ${esc(job.selected_cv)}</span>`;
+        }
+        if (job.cover_letter) {
+            const escapedLetter = esc(job.cover_letter).replace(/\n/g, '\\n');
+            html += ` <button class="eval-badge eval-green" style="background:linear-gradient(135deg,#3498db,#2980b9);border:none;font-size:inherit;font-family:inherit;" data-letter="${escapedLetter}" onclick="copyCoverLetterDirectly(this)" title="Click to copy Cover Letter">📋 Cover Letter</button>`;
+        }
+        html += ` <button class="eval-badge" style="background-color:#9b59b6;color:white;border:none;font-size:inherit;font-family:inherit;margin-left:5px;" onclick="evaluateJob(this,'${esc(job.link)}')" title="Click to re-evaluate this job">🔄 Reevaluate</button>`;
+        return html;
+    } else {
+        let html = `<button class="eval-badge eval-yellow" style="border:none;font-size:inherit;font-family:inherit;" onclick="evaluateJob(this,'${esc(job.link)}')" title="Click to manually evaluate this job">✨ Evaluate</button>`;
+        if (status === 'Unseen') {
+            html += ` <span class="eval-badge eval-green blurred-eval loading-blink">✨ Match: 100%</span>`;
+            html += ` <span class="keyword-badge blurred-eval loading-blink" style="background-color:#34495e;color:white;">📄 Software</span>`;
+            html += ` <button class="eval-badge eval-green blurred-eval loading-blink" style="background:linear-gradient(135deg,#3498db,#2980b9);border:none;">📋 Cover Letter</button>`;
+        }
+        return html;
+    }
+}
+
+function updateJobCardEvalInPlace(link, score, reason, selected_cv, cover_letter) {
+    const card = document.querySelector(`.job-card[data-url="${CSS.escape(link)}"]`);
+    if (!card) return;
+    
+    const evalMetaSpan = card.querySelector('.eval-meta-container');
+    if (evalMetaSpan) {
+        const job = {
+            link: link,
+            eval_score: score,
+            eval_reason: reason || '',
+            selected_cv: selected_cv || '',
+            cover_letter: cover_letter || ''
+        };
+        const status = card.getAttribute('data-status') || 'Unseen';
+        evalMetaSpan.innerHTML = buildEvalHtml(job, status);
+        
+        // Smooth highlight pulse animation
+        card.style.transition = 'box-shadow 0.4s ease, border-color 0.4s ease';
+        card.style.boxShadow = '0 0 20px rgba(108, 92, 231, 0.7)';
+        card.style.borderColor = '#a29bfe';
+        setTimeout(() => {
+            card.style.boxShadow = '';
+            card.style.borderColor = '';
+        }, 2500);
+    }
+}
+
 function setupEvalTerminal() {
+    if (window._evalEventSource) {
+        try { window._evalEventSource.close(); } catch(e) {}
+    }
     const evalEventSource = new EventSource("/api/eval_stream");
+    window._evalEventSource = evalEventSource;
     const evalTerminal = document.getElementById("evalTerminalOutput");
+    
     evalEventSource.onmessage = function (event) {
-        if (evalTerminal.innerHTML === "Waiting for jobs to evaluate...") evalTerminal.innerHTML = "";
-        evalTerminal.innerHTML += event.data + "<br>";
-        evalTerminal.parentElement.scrollTop = evalTerminal.parentElement.scrollHeight;
-        if (event.data.includes("-> Score:")) {
-            // Refresh current view to show new eval score
-            fetchJobs(true);
+        const data = event.data;
+        if (!data || data.trim() === ": keepalive") return;
+        
+        if (evalTerminal && evalTerminal.innerHTML === "Waiting for jobs to evaluate...") {
+            evalTerminal.innerHTML = "";
+        }
+        
+        if (evalTerminal) {
+            evalTerminal.innerHTML += data + "<br>";
+            evalTerminal.parentElement.scrollTop = evalTerminal.parentElement.scrollHeight;
+        }
+        
+        // Real-time in-place update for individual job cards
+        if (data.includes("EVAL_UPDATE:")) {
+            const raw = data.replace(/<br>/g, '');
+            const match = raw.match(/EVAL_UPDATE:([^:]+):([^:]+):?(.*)/);
+            if (match) {
+                const link = match[1];
+                const score = parseInt(match[2]);
+                const cv = match[3] || '';
+                fetch('/api/jobs?search=' + encodeURIComponent(link) + '&page=1&page_size=1')
+                .then(r => r.json())
+                .then(d => {
+                    if (d.jobs && d.jobs.length > 0) {
+                        const j = d.jobs[0];
+                        updateJobCardEvalInPlace(j.link, j.eval_score, j.eval_reason, j.selected_cv, j.cover_letter);
+                    }
+                })
+                .catch(() => {});
+            }
         }
     };
+    
     evalEventSource.onerror = function () {
-        console.log("Evaluator stream disconnected. Reconnecting in 5s...");
-        evalEventSource.close();
-        setTimeout(setupEvalTerminal, 5000);
+        console.log("Evaluator stream notice: auto-reconnecting if disconnected...");
     };
 }
 if (typeof EVALUATOR_ENABLED !== 'undefined' && EVALUATOR_ENABLED) {
@@ -362,6 +446,36 @@ function toggleEvaluator() {
     fetch('/api/toggle_evaluator', { method: 'POST' })
         .then(res => res.json())
         .then(data => updateEvalButton(data.state));
+}
+
+function evaluateAllUnseen() {
+    const btn = document.getElementById('batchEvalBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = "⏳ Queuing...";
+    }
+    
+    // Open terminal logs wrapper so user sees live output
+    const wrapper = document.getElementById('evalTerminalOutputWrapper');
+    if (wrapper) wrapper.style.display = 'block';
+    
+    fetch('/api/evaluate_all_unseen', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = `⚡ Running (${data.queued_count} queued)`;
+            setTimeout(() => { btn.innerText = "⚡ Evaluate All Unseen"; }, 4000);
+        }
+        updateEvalButton('RUNNING');
+    })
+    .catch(err => {
+        console.error('Batch eval error:', err);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "⚡ Evaluate All Unseen";
+        }
+    });
 }
 
 function updateEvalButton(state) {
@@ -392,6 +506,11 @@ function evaluateJob(btn, link) {
     const originalText = btn.innerHTML;
     btn.innerHTML = "⏳ Evaluating...";
     btn.disabled = true;
+    
+    // Open terminal logs wrapper so user can see what Gemini is doing
+    const wrapper = document.getElementById('evalTerminalOutputWrapper');
+    if (wrapper) wrapper.style.display = 'block';
+
     fetch('/api/evaluate_job', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -405,7 +524,11 @@ function evaluateJob(btn, link) {
             btn.disabled = false;
         }
     })
-    .catch(() => { alert("Failed to evaluate job due to network error."); btn.innerHTML = originalText; btn.disabled = false; });
+    .catch(() => { 
+        alert("Failed to evaluate job due to network error."); 
+        btn.innerHTML = originalText; 
+        btn.disabled = false; 
+    });
 }
 
 // ── Export CSV ───────────────────────────────────────────────────────────────
@@ -565,31 +688,6 @@ function buildCard(job) {
     div.setAttribute('data-url', job.link || '');
     div.setAttribute('data-date', job.date_of_release || '');
 
-    // ── Eval badges
-    let evalHtml = '';
-    if (typeof EVALUATOR_ENABLED !== 'undefined' && EVALUATOR_ENABLED) {
-        if (job.eval_score !== '' && job.eval_score !== null && job.eval_score !== undefined) {
-            const score = parseInt(job.eval_score);
-            const evalColor = score >= 70 ? 'green' : (score >= 40 ? 'yellow' : 'red');
-            evalHtml += `<span class="eval-badge eval-${evalColor}" data-reason="${esc(job.eval_reason)}" onclick="openEvalModal(this.getAttribute('data-reason'))" title="Click to read AI reasoning">✨ Match: ${score}%</span>`;
-            if (job.selected_cv) {
-                evalHtml += `<span class="keyword-badge" title="Best CV Match" style="background-color:#34495e;color:white;">📄 ${esc(job.selected_cv)}</span>`;
-            }
-            if (job.cover_letter) {
-                const escapedLetter = esc(job.cover_letter).replace(/\n/g, '\\n');
-                evalHtml += `<button class="eval-badge eval-green" style="background:linear-gradient(135deg,#3498db,#2980b9);border:none;font-size:inherit;font-family:inherit;" data-letter="${escapedLetter}" onclick="copyCoverLetterDirectly(this)" title="Click to copy Cover Letter">📋 Cover Letter</button>`;
-            }
-            evalHtml += `<button class="eval-badge" style="background-color:#9b59b6;color:white;border:none;font-size:inherit;font-family:inherit;margin-left:5px;" onclick="evaluateJob(this,'${esc(job.link)}')" title="Click to re-evaluate this job">🔄 Reevaluate</button>`;
-        } else {
-            evalHtml += `<button class="eval-badge eval-yellow" style="border:none;font-size:inherit;font-family:inherit;" onclick="evaluateJob(this,'${esc(job.link)}')" title="Click to manually evaluate this job">✨ Evaluate</button>`;
-            if (status === 'Unseen') {
-                evalHtml += `<span class="eval-badge eval-green blurred-eval loading-blink">✨ Match: 100%</span>`;
-                evalHtml += `<span class="keyword-badge blurred-eval loading-blink" style="background-color:#34495e;color:white;">📄 Software</span>`;
-                evalHtml += `<button class="eval-badge eval-green blurred-eval loading-blink" style="background:linear-gradient(135deg,#3498db,#2980b9);border:none;">📋 Cover Letter</button>`;
-            }
-        }
-    }
-
     // ── Keyword badges
     let kwHtml = '';
     if (posKws.length > 0) kwHtml += `<span class="count-badge pos-count" title="Positive Keywords">${posKws.length}</span> `;
@@ -638,7 +736,7 @@ function buildCard(job) {
     div.innerHTML = `
         <h2 class="job-title"><a href="${esc(job.link)}" target="_blank" class="title-link">${esc(job.title)}</a></h2>
         <div class="job-meta">
-            <span class="meta-item">${evalHtml}</span>
+            <span class="meta-item eval-meta-container">${buildEvalHtml(job, status)}</span>
             <span class="meta-item"><span class="icon">🏢</span> <span class="company-name">${esc(job.company || 'Unknown')}</span></span>
             ${job.platform ? `<span class="meta-item"><span class="icon">🌐</span> <span class="platform-name">${esc(job.platform)}</span></span>` : ''}
             <span class="meta-item"><span class="icon">📅</span> <span class="date-text" title="${esc(job.date_of_release)}">${timeago(job.discovered_at || job.date_of_release)}</span></span>

@@ -19,6 +19,7 @@ services:
       # Mount Python source files for live backend reloading (no rebuild needed)
       - ./app.py:/app/app.py
       - ./database.py:/app/database.py
+      - ./evaluator.py:/app/evaluator.py
       - ./scraper.py:/app/scraper.py
       - ./utils.py:/app/utils.py
       # Optional local-only source adapters (git-ignored, never baked into image)
