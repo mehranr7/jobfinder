@@ -86,16 +86,22 @@
                     All <span class="tab-count" id="tabCount-all"></span>
                 </button>
                 <button class="status-tab active" data-status="Unseen" onclick="setStatusTab(this)">
-                    🆕 Unseen <span class="tab-count" id="tabCount-Unseen"></span>
+                    🆕 New <span class="tab-count" id="tabCount-Unseen"></span>
                 </button>
                 <button class="status-tab" data-status="Later" onclick="setStatusTab(this)">
-                    ⏳ Later <span class="tab-count" id="tabCount-Later"></span>
+                    ⏳ Postpone <span class="tab-count" id="tabCount-Later"></span>
+                </button>
+                <button class="status-tab" data-status="Issue" onclick="setStatusTab(this)">
+                    ⚠️ Issue <span class="tab-count" id="tabCount-Issue"></span>
+                </button>
+                <button class="status-tab" data-status="Skipped" onclick="setStatusTab(this)">
+                    ❌ Skipped <span class="tab-count" id="tabCount-Skipped"></span>
                 </button>
                 <button class="status-tab" data-status="Applied" onclick="setStatusTab(this)">
                     ✅ Applied <span class="tab-count" id="tabCount-Applied"></span>
                 </button>
-                <button class="status-tab" data-status="Skipped" onclick="setStatusTab(this)">
-                    ❌ Skipped <span class="tab-count" id="tabCount-Skipped"></span>
+                <button class="status-tab" data-status="Interview" onclick="setStatusTab(this)">
+                    🎯 Interview <span class="tab-count" id="tabCount-Interview"></span>
                 </button>
             </div>
 
@@ -207,9 +213,8 @@
     <script>
         window.PAGE_SIZE = {{ page_size|default(20) }};
         window.SPECIAL_THRESHOLD = {{ special_threshold|default(3) }};
+        window.CV_TYPES = {{ cv_types | tojson }};
         const EVALUATOR_ENABLED = {{ 'true' if evaluator_enabled else 'false' }};
-        const APP_STATES = {{ app_states | tojson }};
-        const CV_TYPES = {{ cv_types | tojson }};
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 

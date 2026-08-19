@@ -42,6 +42,8 @@ function esc(str) {
 
 // ── Status change ────────────────────────────────────────────────────────────
 
+const STATUS_EMOJI_MAP = { Unseen: '🆕', Later: '⏳', Issue: '⚠️', Skipped: '❌', Applied: '✅', Interview: '🎯' };
+
 function changeStatus(btn, link, newStatus) {
     const card = btn.closest('.job-card');
     if (btn.disabled) return;
@@ -63,8 +65,7 @@ function changeStatus(btn, link, newStatus) {
             card.setAttribute('data-status', newStatus);
             card.className = card.className.replace(/\bstatus-[a-z]+\b/g, '').trim();
             card.classList.add('status-' + newStatus.toLowerCase());
-            const emojiMap = { Unseen: '🆕', Later: '⏳', Applied: '✅', Skipped: '❌' };
-            btn.innerText = emojiMap[newStatus] || originalText;
+            btn.innerText = STATUS_EMOJI_MAP[newStatus] || originalText;
             btn.disabled = false;
             // Update tab counts
             refreshStatusCounts();
@@ -89,7 +90,8 @@ function changeStatus(btn, link, newStatus) {
 
 function changeCvType(selectElement, link) {
     const cvType = selectElement.value;
-    const originalBorder = selectElement.style.borderColor;
+    if (!cvType) return; // Do nothing if empty/placeholder selected
+    const card = selectElement.closest('.job-card');
     selectElement.disabled = true;
     fetch('/api/change_cv', {
         method: 'POST',
@@ -99,32 +101,16 @@ function changeCvType(selectElement, link) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            selectElement.style.borderColor = 'var(--success)';
-            setTimeout(() => { selectElement.style.borderColor = originalBorder; }, 2000);
+            // Flash success color on the select
+            selectElement.style.outline = '2px solid var(--success)';
+            setTimeout(() => { selectElement.style.outline = ''; }, 1800);
+            // Update the CV label badge in the card if present
+            const cvLabel = card ? card.querySelector('.cv-badge-label') : null;
+            if (cvLabel) cvLabel.textContent = '📄 ' + cvType;
         } else { alert("Failed to update CV."); }
         selectElement.disabled = false;
     })
     .catch(() => { alert("Failed to update CV due to network error."); selectElement.disabled = false; });
-}
-
-function changeAppState(selectElement, link) {
-    const appState = selectElement.value;
-    const originalBorder = selectElement.style.borderColor;
-    selectElement.disabled = true;
-    fetch('/api/change_app_state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ link, app_state: appState })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            selectElement.style.borderColor = 'var(--success)';
-            setTimeout(() => { selectElement.style.borderColor = originalBorder; }, 2000);
-        } else { alert("Failed to update State."); }
-        selectElement.disabled = false;
-    })
-    .catch(() => { alert("Failed to update state due to network error."); selectElement.disabled = false; });
 }
 
 // ── Notes modal ──────────────────────────────────────────────────────────────
@@ -706,7 +692,7 @@ function buildCard(job) {
     // ── Desc tag badges
     let descTagHtml = '';
     if (descTags.length > 0 || negDescTags.length > 0) {
-        descTagHtml = `<div class="job-meta" style="margin-top:5px;"><span class="meta-item" style="color:#7f8c8d;font-size:0.85em;">🔍 `;
+        descTagHtml = `<div class="job-meta desc-tag-row"><span class="meta-item" style="color:#7f8c8d;font-size:0.85em;">🔍 `;
         if (descTags.length) descTagHtml += `<span class="count-badge pos-count" title="Positive Description Tags">${descTags.length}</span> `;
         descTags.forEach(t => { descTagHtml += `<span class="keyword-badge" style="background-color:transparent;border:1px solid #bdc3c7;color:#7f8c8d;font-size:0.9em;padding:2px 6px;margin-left:4px;">${esc(t)}</span>`; });
         if (negDescTags.length) descTagHtml += `<span class="count-badge neg-count" title="Negative Description Tags">${negDescTags.length}</span> `;
@@ -716,29 +702,22 @@ function buildCard(job) {
 
     // ── CV select options
     const cvTypes = window.CV_TYPES || [];
-    let cvOptions = `<option value="" ${!job.cv_type ? 'selected' : ''}>Select CV...</option>`;
+    let cvOptions = `<option value="" ${!job.cv_type ? 'selected' : ''} disabled>CV…</option>`;
     if (job.cv_type && !cvTypes.includes(job.cv_type)) {
-        cvOptions += `<option value="${esc(job.cv_type)}" selected>${esc(job.cv_type)} (Legacy)</option>`;
+        cvOptions += `<option value="${esc(job.cv_type)}" selected>${esc(job.cv_type)} ★</option>`;
     }
-    cvTypes.forEach(cv => { cvOptions += `<option value="${esc(cv)}" ${job.cv_type === cv ? 'selected' : ''}>${esc(cv)} CV</option>`; });
+    cvTypes.forEach(cv => { cvOptions += `<option value="${esc(cv)}" ${job.cv_type === cv ? 'selected' : ''}>${esc(cv)}</option>`; });
 
-    // ── App state options
-    const appStates = window.APP_STATES || [];
-    const currentState = job.app_state || 'Not Applied';
-    let stateOptions = '';
-    if (!appStates.includes(currentState)) {
-        stateOptions += `<option value="${esc(currentState)}" selected>${esc(currentState)} (Legacy)</option>`;
-    }
-    appStates.forEach(s => { stateOptions += `<option value="${esc(s)}" ${currentState === s ? 'selected' : ''}>${esc(s)}</option>`; });
-
-    // ── Status buttons
+    // ── Status buttons: New(Unseen) / Postpone(Later) / Issue / Skipped / Applied / Interview
     const statusBtns = [
-        { s: 'Unseen', e: '🆕', cls: 'btn-unseen' },
-        { s: 'Later',  e: '⏳', cls: 'btn-later' },
-        { s: 'Applied',e: '✅', cls: 'btn-applied' },
-        { s: 'Skipped',e: '❌', cls: 'btn-skipped' },
-    ].map(({ s, e, cls }) =>
-        `<button class="status-btn ${cls}${status === s ? ' active' : ''}" onclick="changeStatus(this,'${esc(job.link)}','${s}')" title="${s}">${e}</button>`
+        { s: 'Unseen',    e: '🆕', cls: 'btn-unseen',    t: 'New' },
+        { s: 'Later',     e: '⏳', cls: 'btn-later',     t: 'Postpone' },
+        { s: 'Issue',     e: '⚠️', cls: 'btn-issue',     t: 'Issue' },
+        { s: 'Skipped',   e: '❌', cls: 'btn-skipped',   t: 'Skipped' },
+        { s: 'Applied',   e: '✅', cls: 'btn-applied',   t: 'Applied' },
+        { s: 'Interview', e: '🎯', cls: 'btn-interview', t: 'Interview' },
+    ].map(({ s, e, cls, t }) =>
+        `<button class="status-btn ${cls}${status === s ? ' active' : ''}" onclick="changeStatus(this,'${esc(job.link)}','${s}')" title="${t}">${e}</button>`
     ).join('');
 
     div.innerHTML = `
@@ -748,23 +727,19 @@ function buildCard(job) {
             <span class="meta-item"><span class="icon">🏢</span> <span class="company-name">${esc(job.company || 'Unknown')}</span></span>
             ${job.platform ? `<span class="meta-item"><span class="icon">🌐</span> <span class="platform-name">${esc(job.platform)}</span></span>` : ''}
             <span class="meta-item"><span class="icon">📅</span> <span class="date-text" title="${esc(job.date_of_release)}">${timeago(job.discovered_at || job.date_of_release)}</span></span>
-            <span class="meta-item">${kwHtml}</span>
+            ${kwHtml ? `<span class="meta-item">${kwHtml}</span>` : ''}
             <span class="meta-item cv-selector-wrapper">
-                CV: <select class="cv-select" onchange="changeCvType(this,'${esc(job.link)}')">${cvOptions}</select>
-                | State: <select class="cv-select app-state-select" onchange="changeAppState(this,'${esc(job.link)}')">${stateOptions}</select>
+                <select class="cv-select" onchange="changeCvType(this,'${esc(job.link)}')" title="Select CV">${cvOptions}</select>
             </span>
         </div>
         ${descTagHtml}
-        <div class="desc-header">
-            <div class="desc-header-left">
-                <button class="toggle-desc-btn" onclick="toggleDescription('${descId}',this)" title="Show/Hide Description">📄</button>
-                <button class="note-btn" data-note-link="${esc(job.link)}" data-note="${esc(job.note || '')}" onclick="openNoteModal('${esc(job.link)}')" title="View/Edit Note">📝</button>
-                <button class="copy-btn" onclick="copyToClipboard('${descId}',this)" title="Copy Description">📋</button>
-            </div>
-            <div class="desc-header-right">
-                <div class="status-btn-group">${statusBtns}</div>
-                <button class="clear-btn" onclick="deleteJob(this,'${esc(job.link)}')" title="Delete Job">🗑️</button>
-            </div>
+        <div class="desc-footer">
+            <button class="toggle-desc-btn" onclick="toggleDescription('${descId}',this)" title="Show/Hide Description">📄 Desc</button>
+            <button class="note-btn" data-note-link="${esc(job.link)}" data-note="${esc(job.note || '')}" onclick="openNoteModal('${esc(job.link)}')" title="View/Edit Note">📝 Note</button>
+            <button class="copy-btn" onclick="copyToClipboard('${descId}',this)" title="Copy Description">📋</button>
+            <span class="footer-spacer"></span>
+            <div class="status-btn-group">${statusBtns}</div>
+            <button class="clear-btn" onclick="deleteJob(this,'${esc(job.link)}')" title="Delete Job">🗑️</button>
         </div>
         <div class="job-description" id="${descId}" style="display:none;">${job.description || ''}</div>
     `;
@@ -798,7 +773,7 @@ function refreshStatusCounts() {
         const total = Object.values(counts).reduce((a, b) => a + b, 0);
         const el = document.getElementById('tabCount-all');
         if (el) el.textContent = total ? `(${total})` : '';
-        ['Unseen', 'Later', 'Applied', 'Skipped'].forEach(s => {
+        ['Unseen', 'Later', 'Issue', 'Skipped', 'Applied', 'Interview'].forEach(s => {
             const c = document.getElementById(`tabCount-${s}`);
             if (c) c.textContent = counts[s] ? `(${counts[s]})` : '';
         });
@@ -879,7 +854,7 @@ function loadFilterOptions() {
         const total = Object.values(counts).reduce((a, b) => a + b, 0);
         const elAll = document.getElementById('tabCount-all');
         if (elAll) elAll.textContent = total ? `(${total})` : '';
-        ['Unseen', 'Later', 'Applied', 'Skipped'].forEach(s => {
+        ['Unseen', 'Later', 'Issue', 'Skipped', 'Applied', 'Interview'].forEach(s => {
             const c = document.getElementById(`tabCount-${s}`);
             if (c) c.textContent = counts[s] ? `(${counts[s]})` : '';
         });
