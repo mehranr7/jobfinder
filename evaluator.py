@@ -441,9 +441,9 @@ def main_loop(log_queue=None):
                 SELECT * FROM jobs 
                 WHERE status IN ('Unseen', 'Later') 
                   AND (eval_score IS NULL OR eval_reason IS NULL OR eval_reason = '' OR eval_reason LIKE 'Error%')
-                  AND (eval_reason IS NULL OR eval_reason NOT LIKE 'Below threshold%')
+                  AND keyword_score >= ?
                 ORDER BY discovered_at DESC
-            """)
+            """, (evaluator_min_score,))
             jobs_to_evaluate = [dict(row) for row in c.fetchall()]
             conn.close()
             

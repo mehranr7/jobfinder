@@ -370,9 +370,17 @@ def evaluate_all_unseen():
     evaluator.current_state = evaluator.STATE_RUNNING
     broadcast_eval_log("🚀 Batch evaluation triggered by user.")
     
+    config = utils.load_config()
+    min_score = config.get("evaluator_min_score", 5)
+
     conn = database.get_connection()
     c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM jobs WHERE status IN ('Unseen', 'Later') AND (eval_score IS NULL OR eval_reason IS NULL OR eval_reason = '' OR eval_reason LIKE 'Error%')")
+    c.execute("""
+        SELECT COUNT(*) FROM jobs 
+        WHERE status IN ('Unseen', 'Later') 
+          AND (eval_score IS NULL OR eval_reason IS NULL OR eval_reason = '' OR eval_reason LIKE 'Error%')
+          AND keyword_score >= ?
+    """, (min_score,))
     count = c.fetchone()[0]
     conn.close()
     

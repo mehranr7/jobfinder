@@ -465,7 +465,11 @@ function evaluateAllUnseen() {
     .then(data => {
         if (btn) {
             btn.disabled = false;
-            btn.innerText = `⚡ Running (${data.queued_count} queued)`;
+            if (data.queued_count > 0) {
+                btn.innerText = `⚡ Running (${data.queued_count} queued)`;
+            } else {
+                btn.innerText = `⚡ 0 queued (others < threshold)`;
+            }
             setTimeout(() => { btn.innerText = "⚡ Evaluate All Unseen"; }, 4000);
         }
         updateEvalButton('RUNNING');
