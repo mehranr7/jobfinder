@@ -556,6 +556,11 @@ def main(log_queue=None):
                 for internal_key in internal_keys:
                     del job[internal_key]
                     
+                # Final keyword_score: title score (set by make_job) + desc hits - neg desc hits
+                desc_hit_count = len([t for t in job.get('description_tags', '').split(',') if t.strip()])
+                neg_desc_hit_count = len([t for t in job.get('neg_description_tags', '').split(',') if t.strip()])
+                job['keyword_score'] = job.get('keyword_score', 0) + desc_hit_count - neg_desc_hit_count
+
                 # Insert into DB
                 database.insert_job(job)
                 emit_log(f"  -> UI_RELOAD", log_queue)

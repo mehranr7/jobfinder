@@ -421,6 +421,7 @@ def main_loop(log_queue=None):
     emit_log(f"Unavailable-model cooldown: {model_cooldown_s:.0f}s", log_queue)
     delay_s = max(1, config.get("evaluator_delay_s", 5))
     cv_paths = config.get("cv_paths", [])
+    evaluator_min_score = config.get("evaluator_min_score", 5)
     instruction_text = load_instruction()
 
     if cv_paths:
@@ -440,6 +441,7 @@ def main_loop(log_queue=None):
                 SELECT * FROM jobs 
                 WHERE status IN ('Unseen', 'Later') 
                   AND (eval_score IS NULL OR eval_reason IS NULL OR eval_reason = '' OR eval_reason LIKE 'Error%')
+                  AND (eval_reason IS NULL OR eval_reason NOT LIKE 'Below threshold%')
                 ORDER BY discovered_at DESC
             """)
             jobs_to_evaluate = [dict(row) for row in c.fetchall()]
@@ -454,8 +456,14 @@ def main_loop(log_queue=None):
             for job in jobs_to_evaluate:
                 if not check_state(log_queue):
                     break
-                    
-                emit_log(f"\nEvaluating: {job.get('title', 'Unknown')} ({job.get('company', '')})...", log_queue)
+
+                kw_score = job.get('keyword_score') or 0
+                if kw_score < evaluator_min_score:
+                    emit_log(f"  [⏸] Skipped (kw_score={kw_score} < {evaluator_min_score}): {job.get('title', '')}", log_queue)
+                    # Mark with a placeholder so it doesn't get re-queued each loop
+                    database.update_job_eval(job['link'], None, f"Below threshold (kw_score={kw_score})")
+                    continue
+
                 
                 try:
                     evaluate_job_data(

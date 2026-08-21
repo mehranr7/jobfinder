@@ -326,6 +326,9 @@ function buildEvalHtml(job, status) {
     if (typeof EVALUATOR_ENABLED === 'undefined' || !EVALUATOR_ENABLED) return '';
     
     const hasScore = job.eval_score !== '' && job.eval_score !== null && job.eval_score !== undefined;
+    const kwScore = (job.keyword_score !== undefined && job.keyword_score !== null && job.keyword_score !== '') ? parseInt(job.keyword_score) : 0;
+    const minThreshold = window.EVALUATOR_MIN_SCORE || 5;
+    const isBelowThreshold = !hasScore && kwScore < minThreshold;
     
     if (hasScore) {
         const score = parseInt(job.eval_score);
@@ -339,6 +342,10 @@ function buildEvalHtml(job, status) {
             html += ` <button class="eval-badge eval-green" style="background:linear-gradient(135deg,#3498db,#2980b9);border:none;font-size:inherit;font-family:inherit;" data-letter="${escapedLetter}" onclick="copyCoverLetterDirectly(this)" title="Click to copy Cover Letter">📋 Cover Letter</button>`;
         }
         html += ` <button class="eval-badge" style="background-color:#9b59b6;color:white;border:none;font-size:inherit;font-family:inherit;margin-left:5px;" onclick="evaluateJob(this,'${esc(job.link)}')" title="Click to re-evaluate this job">🔄 Reevaluate</button>`;
+        return html;
+    } else if (isBelowThreshold) {
+        let html = `<span class="eval-badge eval-below" title="Keyword score (${kwScore}) is below auto-evaluation threshold (${minThreshold})">⏸ Below Threshold</span>`;
+        html += ` <button class="eval-badge eval-yellow" style="border:none;font-size:inherit;font-family:inherit;margin-left:5px;" onclick="evaluateJob(this,'${esc(job.link)}')" title="Click to manually evaluate this job with AI">✨ Evaluate</button>`;
         return html;
     } else {
         let html = `<button class="eval-badge eval-yellow" style="border:none;font-size:inherit;font-family:inherit;" onclick="evaluateJob(this,'${esc(job.link)}')" title="Click to manually evaluate this job">✨ Evaluate</button>`;
@@ -682,11 +689,15 @@ function buildCard(job) {
     div.setAttribute('data-url', job.link || '');
     div.setAttribute('data-date', job.date_of_release || '');
 
-    // ── Keyword badges
-    let kwHtml = '';
-    if (posKws.length > 0) kwHtml += `<span class="count-badge pos-count" title="Positive Keywords">${posKws.length}</span> `;
+    // ── Keyword score and badges
+    const kwScore = (job.keyword_score !== undefined && job.keyword_score !== null && job.keyword_score !== '') ? parseInt(job.keyword_score) : 0;
+    const minThreshold = window.EVALUATOR_MIN_SCORE || 5;
+    const scoreBadgeClass = kwScore >= minThreshold ? 'kw-score-high' : (kwScore > 0 ? 'kw-score-med' : 'kw-score-low');
+
+    let kwHtml = `<span class="count-badge ${scoreBadgeClass}" title="Keyword Match Score: ${kwScore} (Auto-evaluation minimum threshold is ${minThreshold})">🔑 ${kwScore >= 0 ? '+' : ''}${kwScore}</span> `;
+    if (posKws.length > 0) kwHtml += `<span class="count-badge pos-count" title="Positive Keywords (${posKws.length})">${posKws.length}</span> `;
     posKws.forEach(kw => { kwHtml += `<span class="keyword-badge">${esc(kw)}</span>`; });
-    if (negKws.length > 0) kwHtml += `<span class="count-badge neg-count" title="Negative Keywords">${negKws.length}</span> `;
+    if (negKws.length > 0) kwHtml += `<span class="count-badge neg-count" title="Negative Keywords (${negKws.length})">${negKws.length}</span> `;
     negKws.forEach(kw => { kwHtml += `<span class="keyword-badge negative-badge">${esc(kw)}</span>`; });
 
     // ── Desc tag badges

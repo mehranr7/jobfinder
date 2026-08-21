@@ -104,6 +104,11 @@ def init_db():
     except sqlite3.OperationalError:
         pass # Column already exists
 
+    try:
+        c.execute('ALTER TABLE jobs ADD COLUMN keyword_score INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
     conn.commit()
     conn.close()
 
@@ -128,8 +133,8 @@ def insert_job(job_dict):
     c = conn.cursor()
     try:
         c.execute('''
-            INSERT INTO jobs (link, title, company, platform, date_of_release, keywords, negative_keywords, description, description_tags, neg_description_tags, status, cv_type, app_state, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO jobs (link, title, company, platform, date_of_release, keywords, negative_keywords, description, description_tags, neg_description_tags, status, cv_type, app_state, note, keyword_score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             job_dict.get('link'),
             job_dict.get('title'),
@@ -144,7 +149,8 @@ def insert_job(job_dict):
             'Unseen',
             '',
             'None',
-            ''
+            '',
+            job_dict.get('keyword_score', 0)
         ))
         conn.commit()
     except sqlite3.IntegrityError:
@@ -227,6 +233,7 @@ def get_jobs_filtered(search="", status="", platforms=None, keywords=None,
         "title-asc":  "LOWER(title) ASC",
         "title-desc": "LOWER(title) DESC",
         "score-desc": "COALESCE(eval_score, -1) DESC",
+        "kw-score-desc": "COALESCE(keyword_score, 0) DESC",
     }
     order_by = sort_map.get(sort, "discovered_at DESC")
 
@@ -324,14 +331,28 @@ def update_job_eval(link, eval_score, eval_reason, selected_cv="", cover_letter=
     conn.commit()
     conn.close()
 
-def update_job_tags(link, keywords, neg_keywords, desc_tags, neg_desc_tags):
+def update_job_tags(link, keywords, neg_keywords, desc_tags, neg_desc_tags, keyword_score=None):
     conn = get_connection()
     c = conn.cursor()
-    c.execute('''
-        UPDATE jobs 
-        SET keywords = ?, negative_keywords = ?, description_tags = ?, neg_description_tags = ? 
-        WHERE link = ?
-    ''', (keywords, neg_keywords, desc_tags, neg_desc_tags, link))
+    if keyword_score is not None:
+        c.execute('''
+            UPDATE jobs 
+            SET keywords = ?, negative_keywords = ?, description_tags = ?, neg_description_tags = ?, keyword_score = ?
+            WHERE link = ?
+        ''', (keywords, neg_keywords, desc_tags, neg_desc_tags, keyword_score, link))
+    else:
+        c.execute('''
+            UPDATE jobs 
+            SET keywords = ?, negative_keywords = ?, description_tags = ?, neg_description_tags = ? 
+            WHERE link = ?
+        ''', (keywords, neg_keywords, desc_tags, neg_desc_tags, link))
+    conn.commit()
+    conn.close()
+
+def update_keyword_score(link, keyword_score):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('UPDATE jobs SET keyword_score = ? WHERE link = ?', (keyword_score, link))
     conn.commit()
     conn.close()
 

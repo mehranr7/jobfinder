@@ -44,8 +44,11 @@ def index():
     threshold = get_special_threshold()
     app_states, cv_types, page_size = get_config_options()
     evaluator_enabled = get_evaluator_enabled()
+    config = utils.load_config()
+    evaluator_min_score = config.get("evaluator_min_score", 5)
     return render_template('index.html', special_threshold=threshold, page_size=page_size,
-                           app_states=app_states, cv_types=cv_types, evaluator_enabled=evaluator_enabled)
+                           app_states=app_states, cv_types=cv_types, evaluator_enabled=evaluator_enabled,
+                           evaluator_min_score=evaluator_min_score)
 
 @app.route('/api/jobs')
 def api_jobs():
@@ -172,19 +175,20 @@ def delete_job():
 def update_tags():
     def generate():
         try:
-            scraper.load_config()
-            keywords = scraper.KEYWORDS
-            negative_keywords = scraper.NEGATIVE_KEYWORDS
+            config = utils.load_config()
+            keywords = config.get('keywords', [])
+            negative_keywords = config.get('negative_keywords', [])
+            evaluator_min_score = config.get('evaluator_min_score', 5)
             
             conn = database.get_connection()
             c = conn.cursor()
-            c.execute("SELECT link, title, description FROM jobs")
+            c.execute("SELECT link, title, description, eval_score, eval_reason FROM jobs")
             jobs = [dict(row) for row in c.fetchall()]
             conn.close()
             
             total = len(jobs)
             for i, job in enumerate(jobs):
-                title = job['title']
+                title = job['title'] or ""
                 desc = job['description'] or ""
                 
                 matched_kws = []
@@ -211,13 +215,25 @@ def update_tags():
                 seen_neg = set()
                 unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
                 
+                score = len(matched_kws) * 2 - len(matched_neg_kws) * 3 + len(unique_tags) - len(unique_neg_tags)
+                
                 database.update_job_tags(
                     job['link'],
                     ", ".join(matched_kws),
                     ", ".join(matched_neg_kws),
                     ", ".join(unique_tags),
-                    ", ".join(unique_neg_tags)
+                    ", ".join(unique_neg_tags),
+                    keyword_score=score
                 )
+
+                # If the job has no AI eval_score, sync its eval_reason with threshold status
+                if job.get('eval_score') is None or job.get('eval_score') == '':
+                    curr_reason = job.get('eval_reason') or ''
+                    if score >= evaluator_min_score:
+                        if curr_reason.startswith('Below threshold'):
+                            database.update_job_eval(job['link'], None, '')
+                    else:
+                        database.update_job_eval(job['link'], None, f"Below threshold (kw_score={score})")
                 
                 if i % 10 == 0:
                     yield f"data: {json.dumps({'progress': i, 'total': total, 'success': False})}\n\n"

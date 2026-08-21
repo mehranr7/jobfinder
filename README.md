@@ -6,7 +6,7 @@ Built with Python, Flask, Playwright, and Docker. Designed to run locally with z
 
 ## Features
 
-- **Multi-Platform Scraping** — Aggregates listings from Stellenwerk, Stepstone, Xing, Talent.com, Kimeta, and Glassdoor with source-aware pagination and cross-platform deduplication.
+- **Multi-Platform Scraping** — Aggregates listings from Stellenwerk, Stepstone, Xing, Talent.com, Kimeta, Glassdoor, and configurable company career pages with source-aware pagination and cross-platform deduplication.
 - **AI-Powered Evaluation** — A background daemon continuously scores new jobs against your CV(s) using Google Gemini, producing a 0–100 match score, a reasoning summary, a recommended CV variant, and a draft cover letter.
 - **Live Streaming UI** — Server-Sent Events push scraper and evaluator logs to the browser in real time. New job cards appear dynamically without page reloads.
 - **Advanced Filtering & Sorting** — Multi-select keyword and negative-keyword filters, platform filters, status filters, and sort-by-date/score controls — all client-side for instant response.
@@ -96,6 +96,8 @@ python app.py
 | `evaluator_model_cooldown_s` | Seconds to skip a model after an unavailable-model or rate-limit error | `300` |
 | `evaluator_delay_s` | Seconds between evaluations (rate limiting) | `15` |
 | `cv_paths` | List of PDF CV file paths | `[]` |
+| `custom_links` | List of company career-page URLs for the generic custom scraper | `[]` |
+| `custom_pages` | Pages to request per custom URL (generic scraper is limited to one) | `1` |
 | `stellenwerk_link` | Stellenwerk search URL or list of URLs | — |
 | `stepstone_link` | Stepstone search URL or list of URLs | — |
 | `xing_link` | Xing search URL or list of URLs | — |
@@ -108,6 +110,12 @@ python app.py
 | `negative_keywords` | Negative keywords for filtering | `[]` |
 | `app_states` | Custom application pipeline stages | `[Unseen, Applied, ...]` |
 | `cv_types` | CV variant labels | `[Software, Data, ...]` |
+
+`custom_links` accepts ordinary company career-page URLs. The generic adapter
+collects HTTP(S) links whose visible titles match the global `keywords` list,
+then opens each matching link for description extraction. Because career pages
+use different layouts, a company-specific adapter may still be needed for a
+site with unusual markup.
 
 ## Project Structure
 

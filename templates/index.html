@@ -20,7 +20,7 @@
             <button class="done-btn" id="pauseScraperBtn" onclick="pauseScraper()" style="display:none; background-color:#f39c12;">⏸ Pause</button>
             <button class="done-btn" id="resumeScraperBtn" onclick="resumeScraper()" style="display:none; background-color:#27ae60;">▶ Resume</button>
             <button class="clear-btn" id="stopScraperBtn" onclick="stopScraper()" style="display:none; background-color:#e74c3c; color:white;">⏹ Stop</button>
-            <button class="done-btn" id="updateTagsBtn" onclick="updateTags()" style="background-color:#8e44ad; margin-left:10px;">🏷️ Update Tags</button>
+            <button class="done-btn" id="updateTagsBtn" onclick="updateTags()" style="background-color:#8e44ad; margin-left:10px;">🏷️ Update Tags & Scores</button>
         </div>
 
         <div id="updateProgressContainer" style="display:none; margin-bottom:20px; text-align:center; max-width:600px; margin-left:auto; margin-right:auto;">
@@ -57,104 +57,101 @@
         </div>
         {% endif %}
 
-        <!-- ── NEW: Search & Filter Panel ──────────────────────────────── -->
+        <!-- ── Ultra-Compact Sticky Search & Filter Panel ──────────────────────────────── -->
         <div class="filter-panel">
-            <!-- Search Bar -->
-            <div class="search-bar-row">
+            <!-- Row 1: Search, Filter Dropdowns, Reset, Sort, Export -->
+            <div class="filter-row-primary">
                 <div class="search-bar-wrap">
                     <span class="search-icon">🔍</span>
                     <input type="text" id="searchInput" class="search-bar-input"
-                        placeholder="Search by title, company, keyword…"
+                        placeholder="Search title, company, keyword…"
                         autocomplete="off" spellcheck="false">
                     <button class="search-clear-btn" id="searchClearBtn" onclick="clearSearch()" title="Clear">✕</button>
                 </div>
+
+                <div class="filter-dropdown-wrap" id="platformFilterGroup">
+                    <button class="filter-pill-btn" onclick="toggleFilterDropdown('platformDrop')">
+                        <span id="platformPillLabel">Platform</span> <span class="pill-caret">▾</span>
+                    </button>
+                    <div class="filter-dropdown" id="platformDrop" style="display:none;">
+                        <div class="filter-dropdown-search">
+                            <input type="text" placeholder="Search…" oninput="filterDropdownSearch(this, 'platformDrop')">
+                        </div>
+                        <div class="filter-dropdown-list" id="platformDropList"></div>
+                    </div>
+                </div>
+
+                <div class="filter-dropdown-wrap">
+                    <button class="filter-pill-btn" onclick="toggleFilterDropdown('keywordDrop')">
+                        <span id="keywordPillLabel">Keyword</span> <span class="pill-caret">▾</span>
+                    </button>
+                    <div class="filter-dropdown" id="keywordDrop" style="display:none;">
+                        <div class="filter-dropdown-search">
+                            <input type="text" placeholder="Search…" oninput="filterDropdownSearch(this, 'keywordDrop')">
+                        </div>
+                        <div class="filter-dropdown-list" id="keywordDropList"></div>
+                    </div>
+                </div>
+
+                <div class="filter-dropdown-wrap">
+                    <button class="filter-pill-btn" onclick="toggleFilterDropdown('negKwDrop')">
+                        <span id="negKwPillLabel">⚠ Neg. Kw</span> <span class="pill-caret">▾</span>
+                    </button>
+                    <div class="filter-dropdown" id="negKwDrop" style="display:none;">
+                        <div class="filter-dropdown-search">
+                            <input type="text" placeholder="Search…" oninput="filterDropdownSearch(this, 'negKwDrop')">
+                        </div>
+                        <div class="filter-dropdown-list" id="negKwDropList"></div>
+                    </div>
+                </div>
+
+                <button class="reset-filters-btn" id="resetFiltersBtn" onclick="resetAllFilters()" style="display:none;">✕ Reset</button>
+
                 <div class="filter-right-controls">
                     <select id="sortSelect" class="sort-select" onchange="onFilterChange()">
-                        <option value="date-desc">⬇ Newest First</option>
-                        <option value="date-asc">⬆ Oldest First</option>
+                        <option value="date-desc">⬇ Newest</option>
+                        <option value="date-asc">⬆ Oldest</option>
                         <option value="title-asc">A → Z</option>
                         <option value="title-desc">Z → A</option>
-                        <option value="score-desc">✨ Best Match</option>
+                        <option value="score-desc">✨ AI Match</option>
+                        <option value="kw-score-desc">🔑 Kw Score</option>
                     </select>
-                    <button class="action-btn export-btn" onclick="exportFilteredJobsToCSV()">📥 Export</button>
+                    <button class="action-btn export-btn" onclick="exportFilteredJobsToCSV()" title="Export CSV">📥 Export</button>
                 </div>
             </div>
 
-            <!-- Status Tabs -->
-            <div class="status-tabs">
-                <button class="status-tab" data-status="" onclick="setStatusTab(this)">
-                    All <span class="tab-count" id="tabCount-all"></span>
-                </button>
-                <button class="status-tab active" data-status="Unseen" onclick="setStatusTab(this)">
-                    🆕 New <span class="tab-count" id="tabCount-Unseen"></span>
-                </button>
-                <button class="status-tab" data-status="Later" onclick="setStatusTab(this)">
-                    ⏳ Postpone <span class="tab-count" id="tabCount-Later"></span>
-                </button>
-                <button class="status-tab" data-status="Issue" onclick="setStatusTab(this)">
-                    ⚠️ Issue <span class="tab-count" id="tabCount-Issue"></span>
-                </button>
-                <button class="status-tab" data-status="Skipped" onclick="setStatusTab(this)">
-                    ❌ Skipped <span class="tab-count" id="tabCount-Skipped"></span>
-                </button>
-                <button class="status-tab" data-status="Applied" onclick="setStatusTab(this)">
-                    ✅ Applied <span class="tab-count" id="tabCount-Applied"></span>
-                </button>
-                <button class="status-tab" data-status="Interview" onclick="setStatusTab(this)">
-                    🎯 Interview <span class="tab-count" id="tabCount-Interview"></span>
-                </button>
-            </div>
+            <!-- Row 2: Status Tabs & Inline Counter / Active Chips -->
+            <div class="filter-row-secondary">
+                <div class="status-tabs">
+                    <button class="status-tab" data-status="" onclick="setStatusTab(this)">
+                        All <span class="tab-count" id="tabCount-all"></span>
+                    </button>
+                    <button class="status-tab active" data-status="Unseen" onclick="setStatusTab(this)">
+                        🆕 New <span class="tab-count" id="tabCount-Unseen"></span>
+                    </button>
+                    <button class="status-tab" data-status="Later" onclick="setStatusTab(this)">
+                        ⏳ Postpone <span class="tab-count" id="tabCount-Later"></span>
+                    </button>
+                    <button class="status-tab" data-status="Issue" onclick="setStatusTab(this)">
+                        ⚠️ Issue <span class="tab-count" id="tabCount-Issue"></span>
+                    </button>
+                    <button class="status-tab" data-status="Skipped" onclick="setStatusTab(this)">
+                        ❌ Skipped <span class="tab-count" id="tabCount-Skipped"></span>
+                    </button>
+                    <button class="status-tab" data-status="Applied" onclick="setStatusTab(this)">
+                        ✅ Applied <span class="tab-count" id="tabCount-Applied"></span>
+                    </button>
+                    <button class="status-tab" data-status="Interview" onclick="setStatusTab(this)">
+                        🎯 Interview <span class="tab-count" id="tabCount-Interview"></span>
+                    </button>
+                </div>
 
-            <!-- Advanced Filter Row -->
-            <div class="advanced-filters" id="advancedFilters">
-                <div class="filter-group" id="platformFilterGroup">
-                    <div class="filter-dropdown-wrap">
-                        <button class="filter-pill-btn" onclick="toggleFilterDropdown('platformDrop')">
-                            <span id="platformPillLabel">Platform</span> <span class="pill-caret">▾</span>
-                        </button>
-                        <div class="filter-dropdown" id="platformDrop" style="display:none;">
-                            <div class="filter-dropdown-search">
-                                <input type="text" placeholder="Search…" oninput="filterDropdownSearch(this, 'platformDrop')">
-                            </div>
-                            <div class="filter-dropdown-list" id="platformDropList"></div>
-                        </div>
+                <div class="filter-secondary-right">
+                    <div class="active-chips" id="activeChips"></div>
+                    <div class="result-meta">
+                        <span id="jobCountDisplay">Loading…</span>
                     </div>
                 </div>
-                <div class="filter-group">
-                    <div class="filter-dropdown-wrap">
-                        <button class="filter-pill-btn" onclick="toggleFilterDropdown('keywordDrop')">
-                            <span id="keywordPillLabel">Keyword</span> <span class="pill-caret">▾</span>
-                        </button>
-                        <div class="filter-dropdown" id="keywordDrop" style="display:none;">
-                            <div class="filter-dropdown-search">
-                                <input type="text" placeholder="Search…" oninput="filterDropdownSearch(this, 'keywordDrop')">
-                            </div>
-                            <div class="filter-dropdown-list" id="keywordDropList"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="filter-group">
-                    <div class="filter-dropdown-wrap">
-                        <button class="filter-pill-btn" onclick="toggleFilterDropdown('negKwDrop')">
-                            <span id="negKwPillLabel">⚠ Neg. Keyword</span> <span class="pill-caret">▾</span>
-                        </button>
-                        <div class="filter-dropdown" id="negKwDrop" style="display:none;">
-                            <div class="filter-dropdown-search">
-                                <input type="text" placeholder="Search…" oninput="filterDropdownSearch(this, 'negKwDrop')">
-                            </div>
-                            <div class="filter-dropdown-list" id="negKwDropList"></div>
-                        </div>
-                    </div>
-                </div>
-                <button class="reset-filters-btn" id="resetFiltersBtn" onclick="resetAllFilters()" style="display:none;">✕ Reset Filters</button>
-            </div>
-
-            <!-- Active filter chips -->
-            <div class="active-chips" id="activeChips"></div>
-
-            <!-- Result count -->
-            <div class="result-meta">
-                <span id="jobCountDisplay">Loading…</span>
             </div>
         </div>
 
@@ -214,6 +211,7 @@
         window.PAGE_SIZE = {{ page_size|default(20) }};
         window.SPECIAL_THRESHOLD = {{ special_threshold|default(3) }};
         window.CV_TYPES = {{ cv_types | tojson }};
+        window.EVALUATOR_MIN_SCORE = {{ evaluator_min_score|default(5) }};
         const EVALUATOR_ENABLED = {{ 'true' if evaluator_enabled else 'false' }};
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>

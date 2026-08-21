@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from public_sources import (
     PUBLIC_SOURCES,
     fetch_glassdoor_description,
+    parse_custom_career_html,
     parse_glassdoor_html,
     parse_kimeta_html,
     parse_talent_html,
@@ -18,6 +19,43 @@ NEGATIVE_KEYWORDS = ["Senior"]
 
 
 class PublicSourceParserTests(unittest.TestCase):
+    def test_custom_career_parser_extracts_keyword_matching_links(self):
+        html = """
+        <main>
+          <a href="/jobs/python-werkstudent"><h2>Werkstudent Python Automation</h2>
+             <time datetime="2026-08-18">18.08.2026</time></a>
+          <a href="/about">Über uns</a>
+          <a href="https://jobs.example.test/other"><h2>Senior Accountant</h2></a>
+        </main>
+        """
+
+        jobs = parse_custom_career_html(
+            html,
+            "https://acme.example/careers",
+            ["Werkstudent", "Python"],
+            ["Senior"],
+        )
+
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0]["title"], "Werkstudent Python Automation")
+        self.assertEqual(jobs[0]["link"], "https://acme.example/jobs/python-werkstudent")
+        self.assertEqual(jobs[0]["company"], "Acme")
+        self.assertEqual(jobs[0]["platform"], "Custom Careers")
+        self.assertEqual(jobs[0]["date"], "2026-08-18")
+
+    def test_custom_career_source_is_configurable_as_a_list(self):
+        config = {
+            "custom_links": [
+                "https://one.example/careers",
+                "https://two.example/jobs",
+            ],
+            "custom_pages": 1,
+        }
+
+        targets = build_targets(config, PUBLIC_SOURCES)
+
+        self.assertEqual(len([target for target in targets if target["domain"] == "Custom Careers"]), 2)
+
     def test_talent_parser_preserves_job_contract(self):
         html = """
         <article data-testid="job-card-unified">

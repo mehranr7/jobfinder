@@ -43,6 +43,30 @@ kimeta_pages: 1  # Kimeta exposes only its first result batch without a crawl ch
 glassdoor_link: ""
 glassdoor_pages: 1
 
+# Simple generic scraper for company career pages. Job links whose titles
+# match the global keywords are collected. These pages were checked for
+# stable, visible job listings and are safe defaults for the public example.
+custom_links:
+  - "https://applike-group.com/jobs/"
+  - "https://adjoe.io/careers/open-positions/"
+  - "https://tngtech.jobs.personio.de/"
+  - "https://job-boards.eu.greenhouse.io/appinio"
+  - "https://job-boards.eu.greenhouse.io/raisin?offices%5B%5D=4032009101"
+  - "https://job-boards.eu.greenhouse.io/moia?field_4012826101%5B%5D=4565537101"
+  - "https://job-boards.greenhouse.io/wppmedia?offices%5B%5D=4047174008"
+  - "https://www.impulse.de/karriere"
+  - "https://www.cbs-consulting.com/karriere-bei-cbs/stellenangebote/?_locations=hamburg&_experience=students"
+  - "https://karriere.qbeyond.de/"
+  - "https://karriere.materna.de/stellenmarkt/?filter%5Btaetigkeit_id%5D=4"
+  - "https://job-boards.eu.greenhouse.io/capgeminideutschlandgmbh?page=1"
+  - "https://www.prodyna.com/jobs?location=Hamburg&division=PRODYNA+-+Germany"
+  - "https://jobs.aurubis.com/search?location=Hamburg&career_level=Studenten"
+  - "https://careers.vattenfall.com/global/jobs?options=418%2C640&page=1"
+  - "https://corporate.aboutyou.de/en/career/jobs"
+  - "https://bewerber-innendienst.hansemerkur.de/stellenangebote.html"
+  - "https://www.hamburg-port-authority.de/de/karriere/stellenangebote/stellenangebote.html"
+custom_pages: 1
+
 # ── AI Evaluator ──────────────────────────────────────────
 # Set to false to disable AI evaluation entirely (no API key required)
 enable_evaluator: true

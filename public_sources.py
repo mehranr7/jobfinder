@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
@@ -244,6 +244,98 @@ def extract_glassdoor_description(page, job):
     return None
 
 
+def _custom_company_name(url: str) -> str:
+    host = (urlparse(url).hostname or "").removeprefix("www.")
+    label = host.split(".", 1)[0] if host else "Custom Company"
+    label = re.sub(r"[-_]+", " ", label).strip()
+    return label.title() or "Custom Company"
+
+
+def _custom_job_container(link_tag):
+    """Find a likely job card without requiring a company-specific selector."""
+    card = link_tag.find_parent(["article", "li"])
+    if card:
+        return card
+
+    for parent in link_tag.parents:
+        classes = " ".join(parent.get("class", []))
+        identifier = f"{classes} {parent.get('id', '')}".lower()
+        if any(marker in identifier for marker in ("job", "position", "vacanc", "opening", "career", "stelle", "angebot")):
+            return parent
+    return link_tag
+
+
+def parse_custom_career_html(
+    html: str, base_url: str, keywords: list[str], negative_keywords: list[str]
+) -> list[dict]:
+    """Extract keyword-matching job links from a generic company career page.
+
+    Company career pages have no common markup, so this intentionally uses a
+    conservative heuristic: only HTTP(S) links whose visible title matches a
+    configured keyword are emitted. Site-specific adapters can be added later
+    when a company needs more precise selectors.
+    """
+    soup = _as_soup(html)
+    jobs = []
+    seen_links = set()
+    company = _custom_company_name(base_url)
+
+    for link_tag in soup.select("a[href]"):
+        href = str(link_tag.get("href", "")).strip()
+        if not href or href.startswith(("#", "mailto:", "tel:", "javascript:")):
+            continue
+
+        parsed_link = urlparse(urljoin(base_url, href))
+        if parsed_link.scheme not in {"http", "https"}:
+            continue
+        link = urlunparse(parsed_link._replace(fragment=""))
+        if not link or link.rstrip("/") == base_url.rstrip("/") or link in seen_links:
+            continue
+
+        card = _custom_job_container(link_tag)
+        heading = link_tag.find(["h1", "h2", "h3", "h4", "h5", "h6"])
+        if heading is None and card is not link_tag:
+            heading = card.find(["h1", "h2", "h3", "h4", "h5", "h6"])
+        title = normalize_space(heading.get_text(" ", strip=True) if heading else link_tag.get_text(" ", strip=True))
+        if not title or len(title) > 180:
+            continue
+
+        card_text = normalize_space(card.get_text(" ", strip=True))
+        time_tag = card.find("time") if card is not None else None
+        raw_date = ""
+        if time_tag:
+            raw_date = time_tag.get("datetime", "") or time_tag.get_text(" ", strip=True)
+        if not raw_date:
+            date_match = re.search(r"\b\d{1,2}[./]\d{1,2}[./]\d{2,4}\b", card_text)
+            raw_date = date_match.group(0) if date_match else ""
+
+        job = make_job(
+            title=title,
+            link=link,
+            company=company,
+            platform="Custom Careers",
+            card_text=card_text,
+            keywords=keywords,
+            negative_keywords=negative_keywords,
+            date=parse_listing_date(raw_date),
+            preview_text=card_text,
+        )
+        if job:
+            seen_links.add(link)
+            jobs.append(job)
+    return jobs
+
+
+def scrape_custom_careers(page, url, keywords, negative_keywords):
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(750)
+        return parse_custom_career_html(page.content(), url, keywords, negative_keywords)
+    except Exception as exc:
+        print(f"  [!] Failed to load custom career URL: {exc}")
+        return []
+
+
 def _unchanged_first_page(url: str, page_number: int) -> str:
     return url
 
@@ -283,5 +375,13 @@ PUBLIC_SOURCES = (
         scrape=scrape_glassdoor,
         fetch_description=fetch_glassdoor_description,
         extract_description=extract_glassdoor_description,
+    ),
+    SourceAdapter(
+        name="Custom Careers",
+        link_key="custom_links",
+        pages_key="custom_pages",
+        page_url=_unchanged_first_page,
+        scrape=scrape_custom_careers,
+        max_pages=1,
     ),
 )

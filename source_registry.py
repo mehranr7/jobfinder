@@ -96,6 +96,13 @@ def make_job(
     if not positive_matches:
         return None
 
+    negative_title_matches = matched_terms(title, negative_keywords)
+
+    # Keyword score: title signals are strongest.
+    # Positive title hit: +2 each. Negative title hit: -3 each (penalise hard).
+    # Description hits (+1 each) are added later by scraper/update_tags after deep scrape.
+    title_kw_score = len(positive_matches) * 2 - len(negative_title_matches) * 3
+
     card_text = normalize_space(card_text)
     return {
         "title": title,
@@ -106,6 +113,7 @@ def make_job(
         "keyword": ", ".join(positive_matches),
         "negative_keyword": ", ".join(matched_terms(card_text, negative_keywords)),
         "preview_text": normalize_space(preview_text or card_text),
+        "keyword_score": title_kw_score,
     }
 
 
