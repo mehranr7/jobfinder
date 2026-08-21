@@ -237,10 +237,11 @@ function runScraper() {
         if (event.data === "DONE") {
             source.close();
             resetButtons();
-            termOut.innerHTML += '\nScraper finished.\n';
+            const ts = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            termOut.textContent += `[${ts}] 🏁 Scraper finished\n`;
         } else {
             if (!event.data.includes("-> UI_RELOAD")) {
-                termOut.innerHTML += event.data + '\n';
+                termOut.textContent += event.data.replace(/<br>/g, '\n') + '\n';
                 termWrapper.scrollTop = termWrapper.scrollHeight;
             }
             if (event.data.includes("-> UI_RELOAD")) {
@@ -252,7 +253,8 @@ function runScraper() {
     source.onerror = function () {
         source.close();
         resetButtons();
-        termOut.innerHTML += '\nError connecting to scraper stream.\n';
+        const ts = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        termOut.textContent += `[${ts}] ✖ Error connecting to scraper stream\n`;
     };
 }
 
@@ -420,17 +422,17 @@ function setupEvalTerminal() {
             }
         }
         
-        if (evalTerminal && evalTerminal.innerHTML === "Waiting for jobs to evaluate...") {
-            evalTerminal.innerHTML = "";
+        if (evalTerminal && evalTerminal.textContent.trim() === "Waiting for jobs to evaluate...") {
+            evalTerminal.textContent = "";
         }
         
         if (evalTerminal) {
-            // Keep evaluator/LLM text as text; preserve the server's line
-            // breaks without allowing model output to become HTML.
-            const displayData = evalUpdate
-                ? `✅ Evaluation complete: ${parseInt(evalUpdate.eval_score, 10) || 0}/100`
-                : data;
-            evalTerminal.innerHTML += esc(displayData).replace(/&lt;br&gt;/g, '<br>') + "<br>";
+            let displayData = data;
+            if (evalUpdate) {
+                const ts = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                displayData = `[${ts}] ✅ Evaluation complete: ${parseInt(evalUpdate.eval_score, 10) || 0}/100`;
+            }
+            evalTerminal.textContent += displayData.replace(/<br>/g, '\n') + '\n';
             evalTerminal.parentElement.scrollTop = evalTerminal.parentElement.scrollHeight;
         }
     };

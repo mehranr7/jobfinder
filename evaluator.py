@@ -1,12 +1,20 @@
+import sys
 import time
 import json
 import os
 import re
 import threading
+from datetime import datetime
 import yaml
 import traceback
 import database
 import utils
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 # Suppress FutureWarning from google.generativeai at import time
 import warnings
@@ -118,17 +126,51 @@ def _cooldown_model(model_name, reason, cooldown_s):
 def load_config():
     return utils.load_config()
 
-def emit_log(msg, log_queue=None):
-    print(msg, flush=True)
+def emit_log(msg, log_queue=None, max_len=105):
+    """
+    Formats a single-line message with timestamp [HH:MM:SS] and character limit,
+    prints to console and pushes to log_queue.
+    """
+    if str(msg).startswith("EVAL_UPDATE:") or msg == "DONE":
+        if log_queue is not None:
+            if hasattr(log_queue, "put"):
+                try:
+                    log_queue.put(msg)
+                except Exception:
+                    pass
+            elif callable(log_queue):
+                try:
+                    log_queue(msg)
+                except Exception:
+                    pass
+        return
+
+    # Clean out internal line breaks and multiple spaces for crisp single-line terminal logs
+    clean = " ".join(str(msg).replace("\r", " ").replace("\n", " ").split())
+    if not clean:
+        return
+    if len(clean) > max_len:
+        clean = clean[:max_len - 3] + "..."
+
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    formatted = f"[{timestamp}] {clean}"
+
+    try:
+        print(formatted, flush=True)
+    except Exception:
+        try:
+            print(formatted.encode(getattr(sys.stdout, 'encoding', 'ascii') or 'ascii', errors='replace').decode(getattr(sys.stdout, 'encoding', 'ascii') or 'ascii'), flush=True)
+        except Exception:
+            pass
     if log_queue is not None:
         if hasattr(log_queue, "put"):
             try:
-                log_queue.put(msg)
+                log_queue.put(formatted)
             except Exception:
                 pass
         elif callable(log_queue):
             try:
-                log_queue(msg)
+                log_queue(formatted)
             except Exception:
                 pass
 
@@ -137,15 +179,15 @@ def check_state(log_queue=None):
     was_paused = False
     while current_state == STATE_PAUSED:
         if not was_paused:
-            emit_log("\n--- EVALUATOR PAUSED ---", log_queue)
+            emit_log("⏸ Evaluator paused", log_queue)
             was_paused = True
         time.sleep(0.5)
         
     if was_paused and current_state == STATE_RUNNING:
-        emit_log("\n--- EVALUATOR RESUMED ---", log_queue)
+        emit_log("▶ Evaluator resumed", log_queue)
         
     if current_state == STATE_STOPPED:
-        emit_log("\n--- EVALUATOR STOPPED ---", log_queue)
+        emit_log("⏹ Evaluator stopped", log_queue)
         return False
         
     return True
@@ -269,20 +311,18 @@ def _call_gemini(api_key, model_names, instruction_text, prompt_parts, log_queue
 
     last_error = None
     attempted_model = False
-
     for index, m in enumerate(models_to_try, start=1):
         remaining, reason = _model_cooldown_remaining(m)
         if remaining:
             emit_log(
-                f"  -> Skipping Gemini model {m}: {reason}; "
-                f"cooldown {remaining:.0f}s remaining",
+                f"  ⏳ Skipping {m}: {reason} ({remaining:.0f}s remaining)",
                 log_queue,
             )
             continue
 
         attempted_model = True
         try:
-            emit_log(f"  -> Trying Gemini model {index}/{len(models_to_try)}: {m}", log_queue)
+            emit_log(f"  🤖 Model ({index}/{len(models_to_try)}): {m}", log_queue)
             return _call_gemini_single(api_key, m, instruction_text, prompt_parts)
         except Exception as e:
             last_error = e
@@ -299,22 +339,20 @@ def _call_gemini(api_key, model_names, instruction_text, prompt_parts, log_queue
             ):
                 _cooldown_model(m, "unavailable", model_cooldown_s)
                 emit_log(
-                    f"[!] Model '{m}' unavailable; cooling it down for "
-                    f"{model_cooldown_s:.0f}s and trying fallback...",
+                    f"  ⚠ Model '{m}' unavailable, cooling {model_cooldown_s:.0f}s...",
                     log_queue,
                 )
                 continue
             elif "429" in err_str or "quota" in err_str.lower():
                 _cooldown_model(m, "rate limited", model_cooldown_s)
                 emit_log(
-                    f"[!] Rate limit on '{m}'; cooling it down for "
-                    f"{model_cooldown_s:.0f}s and trying fallback model...",
+                    f"  ⏳ Rate limit on '{m}', cooling {model_cooldown_s:.0f}s...",
                     log_queue,
                 )
                 continue
             else:
                 # Other error, try fallback
-                emit_log(f"[!] Error calling '{m}': {e}. Trying fallback...", log_queue)
+                emit_log(f"  ✖ Error calling '{m}': {str(e)[:40]}", log_queue)
                 continue
 
     if not attempted_model:
@@ -372,7 +410,7 @@ def evaluate_job_data(job, api_key, model_names, instruction_text, gemini_cvs, l
     cover_letter = data.get("cover_letter", "")
     
     database.update_job_eval(job['link'], score, reason, selected_cv, cover_letter)
-    emit_log(f"  -> Score: {score}/100 | Best CV: {selected_cv or 'None'} | Job: {job.get('title', '')[:40]}", log_queue)
+    emit_log(f"  ✅ Score: {score}/100 | CV: {selected_cv or 'General'} | {job.get('title', '')[:35]}", log_queue)
     
     # Broadcast a structured event for frontend real-time update. JSON avoids
     # delimiter bugs when URLs contain ':' (for example https://... or query
@@ -401,7 +439,7 @@ def main_loop(log_queue=None):
     global current_state
     current_state = STATE_RUNNING
     
-    emit_log("--- EVALUATOR STARTED ---", log_queue)
+    emit_log("🚀 Evaluator started", log_queue)
     
     if not GENAI_AVAILABLE:
         emit_log("[!] Gemini SDK not installed. Install with: pip install google-genai", log_queue)
@@ -416,9 +454,8 @@ def main_loop(log_queue=None):
         return
         
     model_names = get_model_priority(config)
-    emit_log(f"Gemini model priority: {' -> '.join(model_names)}", log_queue)
+    emit_log(f"Models: {' -> '.join(model_names)}", log_queue)
     model_cooldown_s = get_model_cooldown_s(config)
-    emit_log(f"Unavailable-model cooldown: {model_cooldown_s:.0f}s", log_queue)
     delay_s = max(1, config.get("evaluator_delay_s", 5))
     cv_paths = config.get("cv_paths", [])
     evaluator_min_score = config.get("evaluator_min_score", 5)
@@ -451,7 +488,7 @@ def main_loop(log_queue=None):
                 time.sleep(10)
                 continue
                 
-            emit_log(f"Found {len(jobs_to_evaluate)} unseen/later jobs to evaluate...", log_queue)
+            emit_log(f"📋 Queued {len(jobs_to_evaluate)} eligible jobs to evaluate", log_queue)
             
             for job in jobs_to_evaluate:
                 if not check_state(log_queue):
@@ -459,11 +496,11 @@ def main_loop(log_queue=None):
 
                 kw_score = job.get('keyword_score') or 0
                 if kw_score < evaluator_min_score:
-                    emit_log(f"  [⏸] Skipped (kw_score={kw_score} < {evaluator_min_score}): {job.get('title', '')}", log_queue)
-                    # Mark with a placeholder so it doesn't get re-queued each loop
+                    emit_log(f"  ⏸ Below threshold ({kw_score} < {evaluator_min_score}): {job.get('title', '')[:35]}", log_queue)
                     database.update_job_eval(job['link'], None, f"Below threshold (kw_score={kw_score})")
                     continue
 
+                emit_log(f"🔍 Evaluating: {job.get('title', 'Unknown')[:35]} ({job.get('company', '')[:20]})", log_queue)
                 
                 try:
                     evaluate_job_data(
@@ -476,21 +513,20 @@ def main_loop(log_queue=None):
                         model_cooldown_s,
                     )
                 except Exception as e:
-                    emit_log(f"[!] Evaluation failed for '{job.get('title', '')}': {e}", log_queue)
+                    emit_log(f"  ✖ Evaluation failed: {str(e)[:45]}", log_queue)
                     if "429" in str(e) or "quota" in str(e).lower():
-                        emit_log("[!] Rate limit hit. Sleeping 30s before continuing...", log_queue)
+                        emit_log("  ⏳ Rate limit hit. Sleeping 30s before continuing...", log_queue)
                         time.sleep(30)
                     else:
-                        time.sleep(2)
-                        
-                emit_log(f"Cooldown: Waiting {delay_s}s for rate limits...", log_queue)
+                        database.update_job_eval(job['link'], None, f"Error: {e}")
+                
                 time.sleep(delay_s)
                 
         except Exception as e:
-            emit_log(f"[!] Evaluator loop error: {e}", log_queue)
-            traceback.print_exc()
+            emit_log(f"[!] Evaluator loop error: {str(e)[:50]}", log_queue)
             time.sleep(10)
 
+    current_state = STATE_STOPPED
     if log_queue is not None:
         try:
             log_queue.put("DONE")

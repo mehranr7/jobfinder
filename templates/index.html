@@ -36,8 +36,8 @@
                 <span style="font-weight:bold; font-family:monospace; font-size:1.1em;">Scraper Logs</span>
                 <button onclick="toggleTerminal('terminalOutputWrapper')" style="background:none; border:none; color:white; cursor:pointer; font-size:1.2em; padding:0 5px;">▼</button>
             </div>
-            <div id="terminalOutputWrapper" style="display:none; background:#1e1e1e; color:#00ff00; padding:15px; max-height:300px; overflow-y:auto; font-family:monospace; box-shadow:inset 0 0 10px rgba(0,0,0,0.5);">
-                <pre id="terminalOutput" style="margin:0; white-space:pre-wrap; word-wrap:break-word;"></pre>
+            <div id="terminalOutputWrapper" style="display:none; background:#1e1e1e; color:#00ff00; padding:12px 15px; max-height:260px; overflow-y:auto; overflow-x:auto; box-shadow:inset 0 0 10px rgba(0,0,0,0.5);">
+                <pre id="terminalOutput" style="margin:0; white-space:pre; font-family:'Consolas','Courier New',monospace; font-size:0.82em; line-height:1.45;"></pre>
             </div>
         </div>
 
@@ -51,8 +51,8 @@
                 </div>
                 <button onclick="toggleTerminal('evalTerminalOutputWrapper')" style="background:none; border:none; color:white; cursor:pointer; font-size:1.2em; padding:0 5px;">▼</button>
             </div>
-            <div id="evalTerminalOutputWrapper" style="display:none; background:#1e1e1e; color:#a29bfe; padding:15px; max-height:200px; overflow-y:auto; font-family:monospace; box-shadow:inset 0 0 10px rgba(0,0,0,0.5);">
-                <pre id="evalTerminalOutput" style="margin:0; white-space:pre-wrap; word-wrap:break-word;">Waiting for jobs to evaluate...</pre>
+            <div id="evalTerminalOutputWrapper" style="display:none; background:#1e1e1e; color:#a29bfe; padding:12px 15px; max-height:200px; overflow-y:auto; overflow-x:auto; box-shadow:inset 0 0 10px rgba(0,0,0,0.5);">
+                <pre id="evalTerminalOutput" style="margin:0; white-space:pre; font-family:'Consolas','Courier New',monospace; font-size:0.82em; line-height:1.45;">Waiting for jobs to evaluate...</pre>
             </div>
         </div>
         {% endif %}

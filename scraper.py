@@ -3,6 +3,7 @@ import re
 import sys
 import random
 import time
+from datetime import datetime
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
@@ -27,15 +28,15 @@ def check_state(log_queue=None):
     was_paused = False
     while current_state == STATE_PAUSED:
         if not was_paused:
-            emit_log("\n--- SCRAPER PAUSED ---", log_queue)
+            emit_log("⏸ Scraper paused", log_queue)
             was_paused = True
         time.sleep(0.5)
         
     if was_paused and current_state == STATE_RUNNING:
-        emit_log("\n--- SCRAPER RESUMED ---", log_queue)
+        emit_log("▶ Scraper resumed", log_queue)
         
     if current_state == STATE_STOPPED:
-        emit_log("\n--- SCRAPER STOPPED BY USER ---", log_queue)
+        emit_log("⏹ Scraper stopped", log_queue)
         return False
         
     return True
@@ -316,13 +317,35 @@ def _legacy_sources():
         ),
     )
 
-def emit_log(msg, log_queue=None):
+def emit_log(msg, log_queue=None, max_len=105):
     """
-    Prints a message to the console and pushes it to the log_queue if provided.
+    Formats a single-line message with timestamp [HH:MM:SS] and character limit,
+    prints to console and pushes to log_queue.
     """
-    print(msg)
+    if str(msg) == "  -> UI_RELOAD" or str(msg) == "DONE":
+        if log_queue is not None:
+            log_queue.put(msg)
+        return
+
+    # Strip newlines and excess whitespace so every message is strictly 1 clean line
+    clean = " ".join(str(msg).replace("\r", " ").replace("\n", " ").split())
+    if not clean:
+        return
+    if len(clean) > max_len:
+        clean = clean[:max_len - 3] + "..."
+
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    formatted = f"[{timestamp}] {clean}"
+
+    try:
+        print(formatted, flush=True)
+    except Exception:
+        try:
+            print(formatted.encode(getattr(sys.stdout, 'encoding', 'ascii') or 'ascii', errors='replace').decode(getattr(sys.stdout, 'encoding', 'ascii') or 'ascii'), flush=True)
+        except Exception:
+            pass
     if log_queue is not None:
-        log_queue.put(msg)
+        log_queue.put(formatted)
 
 def main(log_queue=None):
     """
@@ -356,7 +379,7 @@ def main(log_queue=None):
         
         current_domain = ""
         
-        emit_log("--- SCRAPING STARTED ---", log_queue)
+        emit_log("🚀 Scraper started", log_queue)
         
         for target in sorted_urls:
             if not check_state(log_queue):
@@ -369,18 +392,18 @@ def main(log_queue=None):
             jobs = []
             
             if domain_name != current_domain:
-                emit_log(f"\n[ {domain_name} ]", log_queue)
+                emit_log(f"🌐 [{domain_name}] Starting scrape...", log_queue)
                 current_domain = domain_name
 
             adapter = SOURCE_ADAPTERS.get(domain_name)
             if adapter is None:
-                emit_log(f"Unknown domain for URL: {url}", log_queue)
+                emit_log(f"  ⚠ Unknown domain adapter: {domain_name}", log_queue)
                 continue
 
             try:
                 jobs = adapter.scrape(page, url, KEYWORDS, NEGATIVE_KEYWORDS)
             except Exception as exc:
-                emit_log(f"  [!] {domain_name} listing extraction failed: {exc}", log_queue)
+                emit_log(f"  ✖ {domain_name} listing failed: {str(exc)[:40]}", log_queue)
                 continue
                 
             total_jobs = len(jobs)
@@ -389,35 +412,26 @@ def main(log_queue=None):
                 if not check_state(log_queue):
                     break
                     
-                title_disp = utils.truncate(job['title'], 50)
+                title_disp = utils.truncate(job['title'], 40)
                     
                 if database.job_exists(job['link']):
-                    emit_log(f"  -> SKIPPED (In DB): {title_disp} | {i+1}/{total_jobs}", log_queue)
+                    emit_log(f"  ↪ [In DB] {title_disp} [{i+1}/{total_jobs}]", log_queue)
                     continue
 
                 existing_job = database.get_existing_job_by_title_and_company(job['title'], job['company'])
                 if existing_job:
-                    log_msg = f"  -> SKIPPED (Duplicate on {existing_job['platform']}): {title_disp} ({job['company']}) | {i+1}/{total_jobs}\n"
-                    log_msg += f"       Original: {existing_job['link']}\n"
-                    log_msg += f"       Ignored:  {job['link']}"
-                    emit_log(log_msg, log_queue)
+                    emit_log(f"  ↪ [Dup on {existing_job['platform']}] {title_disp} ({job.get('company', '')[:15]}) [{i+1}/{total_jobs}]", log_queue)
                     continue
                 
                 new_jobs += 1
-                
-                kw_disp = utils.truncate(job['keyword'], 20)
-                if job['negative_keyword']:
-                    kw_disp += f" (Neg: {utils.truncate(job['negative_keyword'], 10)})"
-                
-                log_msg = f"  -> NEW Match: {title_disp} | {i+1}/{total_jobs}"
-                
-                emit_log(log_msg, log_queue)
+                emit_log(f"  ✨ [NEW] {title_disp} ({job.get('company', '')[:18]}) [{i+1}/{total_jobs}]", log_queue)
                 
                 # Deep Scrape
                 try:
                     text_content = None
                     if adapter.fetch_description is not None:
                         text_content = adapter.fetch_description(job)
+
 
                     if not text_content:
                         if adapter.navigate_to_detail:
@@ -569,7 +583,7 @@ def main(log_queue=None):
                 page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
                 
             if total_jobs > 0:
-                emit_log(f"  -> P.{page_num} - Found {total_jobs} total jobs. Deep scraped {new_jobs} new jobs.", log_queue)
+                emit_log(f"📄 [{domain_name}] P.{page_num}: {total_jobs} found, {new_jobs} new saved", log_queue)
                 
             # Slight delay between domain pages
             page.wait_for_timeout(random.randint(DELAY_MIN_MS, DELAY_MAX_MS))
@@ -579,7 +593,7 @@ def main(log_queue=None):
                 
         browser.close()
         
-    emit_log("\n--- SCRAPING FINISHED ---", log_queue)
+    emit_log("🏁 Scraper finished", log_queue)
         
     if log_queue is not None:
         log_queue.put("DONE")
