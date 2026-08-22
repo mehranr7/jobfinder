@@ -71,7 +71,7 @@ def normalize_space(value: str) -> str:
 
 
 def matched_terms(text: str, terms: Iterable[str]) -> list[str]:
-    return [term for term in terms if re.search(re.escape(term), text or "", re.IGNORECASE)]
+    return utils.match_keywords(text or "", list(terms or []))
 
 
 def make_job(
@@ -111,7 +111,7 @@ def make_job(
         "company": normalize_space(company) or "Unknown Company",
         "platform": platform,
         "keyword": ", ".join(positive_matches),
-        "negative_keyword": ", ".join(matched_terms(card_text, negative_keywords)),
+        "negative_keyword": ", ".join(negative_title_matches),
         "preview_text": normalize_space(preview_text or card_text),
         "keyword_score": title_kw_score,
     }

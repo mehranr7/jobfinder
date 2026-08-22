@@ -32,17 +32,95 @@ def load_config():
 def truncate(s, length=60):
     return s if len(s) <= length else s[:length-3] + "..."
 
+_REGEX_CACHE = {}
+
+def compile_keyword_regex(term: str) -> re.Pattern:
+    """
+    Compiles a keyword into a token/word-boundary aware regex pattern.
+    Handles alphanumeric words and special symbols like C#, C++, .NET, React.js.
+    """
+    term = term.strip()
+    if not term:
+        return None
+    escaped = re.escape(term)
+    
+    # Left boundary: require \b if first char is word char, otherwise require start or non-word char
+    if re.match(r'^\w', term, re.UNICODE):
+        left = r'\b'
+    else:
+        left = r'(?:^|(?<=[^\w]))'
+        
+    # Right boundary: require \b if last char is word char, otherwise require end or non-word char
+    if re.match(r'.*\w$', term, re.UNICODE):
+        right = r'\b'
+    else:
+        right = r'(?:$|(?=[^\w]))'
+        
+    return re.compile(f"{left}{escaped}{right}", re.IGNORECASE | re.UNICODE)
+
+def get_keyword_regex(term: str):
+    term_clean = term.strip()
+    if not term_clean:
+        return None
+    if term_clean not in _REGEX_CACHE:
+        _REGEX_CACHE[term_clean] = compile_keyword_regex(term_clean)
+    return _REGEX_CACHE[term_clean]
+
+def match_keywords(text: str, keywords: list[str]) -> list[str]:
+    """
+    Finds matching keywords in text using word-boundary matching.
+    Returns a deduplicated list of matched keywords in order of appearance in keywords list.
+    """
+    if not text or not keywords:
+        return []
+    
+    matched = []
+    seen_lower = set()
+    
+    for kw in keywords:
+        kw_clean = kw.strip()
+        if not kw_clean:
+            continue
+        kw_lower = kw_clean.lower()
+        if kw_lower in seen_lower:
+            continue
+            
+        pattern = get_keyword_regex(kw_clean)
+        if pattern and pattern.search(text):
+            matched.append(kw_clean)
+            seen_lower.add(kw_lower)
+            
+    return matched
+
 def clean_text(html_content):
     """
-    Cleans raw HTML content by removing scripts, styles, and other non-visible elements.
-    Returns the visible text cleanly formatted with line breaks.
+    Cleans raw HTML content by removing scripts, styles, navigation, headers, footers,
+    cookie banners, and non-content markup. Returns visible text cleanly formatted.
     """
+    if not html_content:
+        return ""
     soup = BeautifulSoup(html_content, 'html.parser')
-    for tag in soup(["script", "style", "header", "footer", "nav", "noscript", "svg", "img"]):
+    
+    # Remove standard non-content tags
+    for tag in soup(["script", "style", "header", "footer", "nav", "noscript", "svg", "img", "aside", "form", "iframe"]):
         tag.extract()
-    text = soup.get_text(separator='\n', strip=True)
-    text = re.sub(r'\n\s*\n', '\n\n', text)
-    return text
+        
+    # Remove common cookie/consent/navigation banners by class/id/role attributes
+    for el in soup.find_all(attrs={"role": re.compile(r"^(navigation|banner|contentinfo|dialog)$", re.I)}):
+        el.extract()
+    for el in soup.find_all(class_=re.compile(r"(cookie|consent|banner|header-nav|footer-nav|menu-container|navigation)", re.I)):
+        el.extract()
+    for el in soup.find_all(id=re.compile(r"(cookie|consent|banner|header|footer|nav)", re.I)):
+        el.extract()
+        
+    # If a <main> or <article> tag exists, prefer extracting from that primary content area
+    main_content = soup.find(['main', 'article'])
+    target = main_content if main_content and len(main_content.get_text(strip=True)) > 150 else soup
+
+    text = target.get_text(separator='\n', strip=True)
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'\n\s*\n+', '\n\n', text)
+    return text.strip()
 
 def parse_relative_date(date_text):
     """

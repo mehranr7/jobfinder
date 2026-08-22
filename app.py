@@ -191,29 +191,10 @@ def update_tags():
                 title = job['title'] or ""
                 desc = job['description'] or ""
                 
-                matched_kws = []
-                for kw in keywords:
-                    if re.search(re.escape(kw), title, re.IGNORECASE):
-                        matched_kws.append(kw)
-                
-                matched_neg_kws = []
-                for nkw in negative_keywords:
-                    if re.search(re.escape(nkw), title, re.IGNORECASE):
-                        matched_neg_kws.append(nkw)
-                
-                desc_tags = []
-                for kw in keywords:
-                    if re.search(re.escape(kw), desc, re.IGNORECASE):
-                        desc_tags.append(kw)
-                seen = set()
-                unique_tags = [x for x in desc_tags if not (x in seen or seen.add(x))]
-                
-                neg_desc_tags = []
-                for nkw in negative_keywords:
-                    if re.search(re.escape(nkw), desc, re.IGNORECASE):
-                        neg_desc_tags.append(nkw)
-                seen_neg = set()
-                unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
+                matched_kws = utils.match_keywords(title, keywords)
+                matched_neg_kws = utils.match_keywords(title, negative_keywords)
+                unique_tags = utils.match_keywords(desc, keywords)
+                unique_neg_tags = utils.match_keywords(desc, negative_keywords)
                 
                 score = len(matched_kws) * 2 - len(matched_neg_kws) * 3 + len(unique_tags) - len(unique_neg_tags)
                 

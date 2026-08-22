@@ -114,27 +114,19 @@ def scrape_stellenwerk(page, url):
             if company_text:
                 company = company_text
                 
-        matched_keywords = []
-        for kw in KEYWORDS:
-            if re.search(re.escape(kw), title, re.IGNORECASE):
-                matched_keywords.append(kw)
-                
-        matched_negative_keywords = []
-        for nkw in NEGATIVE_KEYWORDS:
-            if re.search(re.escape(nkw), card_text, re.IGNORECASE):
-                matched_negative_keywords.append(nkw)
-                
-        if matched_keywords:
-            jobs.append({
-                "title": title,
-                "date": date,
-                "link": job_link,
-                "company": company,
-                "platform": "Stellenwerk",
-                "keyword": ", ".join(matched_keywords),
-                "negative_keyword": ", ".join(matched_negative_keywords),
-                "preview_text": card_text
-            })
+        job = make_job(
+            title=title,
+            link=job_link,
+            company=company,
+            platform="Stellenwerk",
+            card_text=card_text,
+            keywords=KEYWORDS,
+            negative_keywords=NEGATIVE_KEYWORDS,
+            date=date,
+            preview_text=card_text,
+        )
+        if job:
+            jobs.append(job)
     return jobs
 
 def scrape_stepstone(page, url):
@@ -189,27 +181,19 @@ def scrape_stepstone(page, url):
         company_tag = article.find(attrs={"data-at": "job-item-company-name"})
         company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
         
-        matched_keywords = []
-        for kw in KEYWORDS:
-            if re.search(re.escape(kw), title, re.IGNORECASE):
-                matched_keywords.append(kw)
-                
-        matched_negative_keywords = []
-        for nkw in NEGATIVE_KEYWORDS:
-            if re.search(re.escape(nkw), card_text, re.IGNORECASE):
-                matched_negative_keywords.append(nkw)
-                
-        if matched_keywords:
-            jobs.append({
-                "title": title,
-                "date": date,
-                "link": job_link,
-                "company": company,
-                "platform": "Stepstone",
-                "keyword": ", ".join(matched_keywords),
-                "negative_keyword": ", ".join(matched_negative_keywords),
-                "preview_text": card_text
-            })
+        job = make_job(
+            title=title,
+            link=job_link,
+            company=company,
+            platform="Stepstone",
+            card_text=card_text,
+            keywords=KEYWORDS,
+            negative_keywords=NEGATIVE_KEYWORDS,
+            date=date,
+            preview_text=card_text,
+        )
+        if job:
+            jobs.append(job)
     return jobs
 
 def scrape_xing(page, url):
@@ -255,27 +239,19 @@ def scrape_xing(page, url):
         company_tag = article.find("p")
         company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
         
-        matched_keywords = []
-        for kw in KEYWORDS:
-            if re.search(re.escape(kw), title, re.IGNORECASE):
-                matched_keywords.append(kw)
-                
-        matched_negative_keywords = []
-        for nkw in NEGATIVE_KEYWORDS:
-            if re.search(re.escape(nkw), card_text, re.IGNORECASE):
-                matched_negative_keywords.append(nkw)
-                
-        if matched_keywords:
-            jobs.append({
-                "title": title,
-                "date": "Unknown",
-                "link": job_link,
-                "company": company,
-                "platform": "Xing",
-                "keyword": ", ".join(matched_keywords),
-                "negative_keyword": ", ".join(matched_negative_keywords),
-                "preview_text": card_text
-            })
+        job = make_job(
+            title=title,
+            link=job_link,
+            company=company,
+            platform="Xing",
+            card_text=card_text,
+            keywords=KEYWORDS,
+            negative_keywords=NEGATIVE_KEYWORDS,
+            date="Unknown",
+            preview_text=card_text,
+        )
+        if job:
+            jobs.append(job)
     return jobs
 
 
@@ -452,9 +428,17 @@ def main(log_queue=None):
                         if adapter.extract_description is not None:
                             text_content = adapter.extract_description(page, job)
                         if not text_content:
-                            text_content = page.locator('body').inner_text()
+                            # Prioritize content-specific containers before falling back to full page
+                            content_loc = page.locator('main, article, [role="main"], #content, .job-description, .job-detail, .posting-page, .job-posting').first
+                            if content_loc.count() > 0:
+                                try:
+                                    text_content = content_loc.inner_text(timeout=3000)
+                                except Exception:
+                                    text_content = None
+                        if not text_content:
+                            text_content = page.content()
 
-                    if len(text_content) < 150:
+                    if not text_content or len(text_content) < 150:
                         raise ValueError("Extracted text is too short, falling back.")
                         
                     job['description'] = utils.clean_text(text_content) # Just for extra safety with spacing
@@ -525,42 +509,19 @@ def main(log_queue=None):
                         job['description'] = desc.strip()
                     # ----------------------------------------------
                     
-                    desc_tags = []
-                    for kw in KEYWORDS:
-                        if re.search(re.escape(kw), job['description'], re.IGNORECASE):
-                            desc_tags.append(kw)
-                    # Deduplicate while preserving order
-                    seen = set()
-                    unique_tags = [x for x in desc_tags if not (x in seen or seen.add(x))]
+                    unique_tags = utils.match_keywords(job['description'], KEYWORDS)
                     job['description_tags'] = ", ".join(unique_tags)
                     
-                    neg_desc_tags = []
-                    for nkw in NEGATIVE_KEYWORDS:
-                        if re.search(re.escape(nkw), job['description'], re.IGNORECASE):
-                            neg_desc_tags.append(nkw)
-                    # Deduplicate while preserving order
-                    seen_neg = set()
-                    unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
+                    unique_neg_tags = utils.match_keywords(job['description'], NEGATIVE_KEYWORDS)
                     job['neg_description_tags'] = ", ".join(unique_neg_tags)
                 except Exception as e:
                     print(f"Deep scrape error for {job['link']}: {e}")
                     job['description'] = job.get('preview_text', 'Failed to extract content.')
                     
                     # Extract tags from the preview text fallback
-                    desc_tags = []
-                    for kw in KEYWORDS:
-                        if re.search(re.escape(kw), job['description'], re.IGNORECASE):
-                            desc_tags.append(kw)
-                    seen = set()
-                    unique_tags = [x for x in desc_tags if not (x in seen or seen.add(x))]
+                    unique_tags = utils.match_keywords(job['description'], KEYWORDS)
                     job['description_tags'] = ", ".join(unique_tags)
-                    
-                    neg_desc_tags = []
-                    for nkw in NEGATIVE_KEYWORDS:
-                        if re.search(re.escape(nkw), job['description'], re.IGNORECASE):
-                            neg_desc_tags.append(nkw)
-                    seen_neg = set()
-                    unique_neg_tags = [x for x in neg_desc_tags if not (x in seen_neg or seen_neg.add(x))]
+                    unique_neg_tags = utils.match_keywords(job['description'], NEGATIVE_KEYWORDS)
                     job['neg_description_tags'] = ", ".join(unique_neg_tags)
                     
                 # Remove parser-only fields before DB insertion.
@@ -570,10 +531,12 @@ def main(log_queue=None):
                 for internal_key in internal_keys:
                     del job[internal_key]
                     
-                # Final keyword_score: title score (set by make_job) + desc hits - neg desc hits
-                desc_hit_count = len([t for t in job.get('description_tags', '').split(',') if t.strip()])
-                neg_desc_hit_count = len([t for t in job.get('neg_description_tags', '').split(',') if t.strip()])
-                job['keyword_score'] = job.get('keyword_score', 0) + desc_hit_count - neg_desc_hit_count
+                # Final keyword_score: (Title Pos * 2) - (Title Neg * 3) + Desc Pos - Desc Neg
+                pos_title_count = len([k for k in (job.get('keyword') or '').split(',') if k.strip()])
+                neg_title_count = len([k for k in (job.get('negative_keyword') or '').split(',') if k.strip()])
+                desc_hit_count = len(unique_tags)
+                neg_desc_hit_count = len(unique_neg_tags)
+                job['keyword_score'] = (pos_title_count * 2) - (neg_title_count * 3) + desc_hit_count - neg_desc_hit_count
 
                 # Insert into DB
                 database.insert_job(job)
