@@ -228,12 +228,14 @@ def get_jobs_filtered(search="", status="", platforms=None, keywords=None,
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
     sort_map = {
-        "date-desc":  "discovered_at DESC",
-        "date-asc":   "discovered_at ASC",
-        "title-asc":  "LOWER(title) ASC",
-        "title-desc": "LOWER(title) DESC",
-        "score-desc": "COALESCE(eval_score, -1) DESC",
-        "kw-score-desc": "COALESCE(keyword_score, 0) DESC",
+        "date-desc":     "discovered_at DESC",
+        "date-asc":      "discovered_at ASC",
+        "title-asc":     "LOWER(title) ASC",
+        "title-desc":    "LOWER(title) DESC",
+        "score-desc":    "COALESCE(eval_score, -1) DESC, discovered_at DESC",
+        "score-asc":     "CASE WHEN eval_score IS NULL THEN 1 ELSE 0 END, eval_score ASC, discovered_at DESC",
+        "kw-score-desc": "COALESCE(keyword_score, 0) DESC, discovered_at DESC",
+        "kw-score-asc":  "COALESCE(keyword_score, 0) ASC, discovered_at DESC",
     }
     order_by = sort_map.get(sort, "discovered_at DESC")
 
